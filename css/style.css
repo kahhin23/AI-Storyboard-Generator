@@ -684,7 +684,7 @@ textarea::placeholder {
 .editor-bottom-action {
     display: flex;
     justify-content: center;
-    margin-top: 1.5rem;
+    margin-top: 3rem;
     gap: 1rem;
 }
 
