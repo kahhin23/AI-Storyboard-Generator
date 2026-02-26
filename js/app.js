@@ -27,12 +27,6 @@ const app = {
         this.bindEvents();
         this.populateGenres();
         this.initParticles();
-
-        // Pre-fill API key if it exists in local storage
-        const savedKey = localStorage.getItem('gemini_api_key');
-        if (savedKey) {
-            document.getElementById('api-key').value = savedKey;
-        }
     },
 
     bindEvents() {
@@ -40,20 +34,11 @@ const app = {
         document.getElementById('btn-create-project').addEventListener('click', () => {
             const name = document.getElementById('project-name').value.trim();
             const desc = document.getElementById('project-description').value.trim();
-            const apiKey = document.getElementById('api-key').value.trim();
 
             if (!name) {
                 this.showError('project-name', 'Please enter a project name.');
                 return;
             }
-
-            if (!apiKey) {
-                this.showError('api-key', 'Please enter your Gemini API key.');
-                return;
-            }
-
-            // Save the API key to local storage
-            localStorage.setItem('gemini_api_key', apiKey);
 
             this.state.project.name = name;
             this.state.project.description = desc;
