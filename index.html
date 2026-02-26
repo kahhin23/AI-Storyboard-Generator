@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Storyboard Generator</title>
+    <meta name="description"
+        content="Generate professional storyboards instantly using Gemini AI based on your project requirements.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="glass-background"></div>
+    <div class="particles" id="particles"></div>
+
+    <main class="app-container">
+
+        <!-- Screen: Home (Create New Project) -->
+        <section id="screen-home" class="screen active">
+            <div class="hero">
+                <h1 class="gradient-text">AI Storyboard Generator</h1>
+                <p>Transform your ideas into visual narratives instantly.</p>
+                <div class="input-group">
+                    <label for="project-name">Project Name</label>
+                    <input type="text" id="project-name" placeholder="e.g. My Awesome Short Film" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="project-description">Brief Description (Optional but recommended)</label>
+                    <textarea id="project-description"
+                        placeholder="What is this about? e.g. A story about a dog finding its way home..."
+                        rows="3"></textarea>
+                </div>
+                <button id="btn-create-project" class="btn primary glowing">Start Journey <span
+                        class="arrow">→</span></button>
+            </div>
+        </section>
+
+        <!-- Screen: Storyboard Type -->
+        <section id="screen-type" class="screen hidden">
+            <button class="btn-back" onclick="app.goBack()">&#8592; Back</button>
+            <div class="header-text">
+                <h2>Select Storyboard Type</h2>
+                <p class="subtitle">What kind of project are you creating?</p>
+            </div>
+            <div class="options-grid">
+                <div class="option-card" data-value="Drama" onclick="app.selectType('Drama')">
+                    <div class="icon">🎭</div>
+                    <h3>Drama</h3>
+                    <p>Character-driven narratives</p>
+                </div>
+                <div class="option-card" data-value="Movie" onclick="app.selectType('Movie')">
+                    <div class="icon">🎬</div>
+                    <h3>Movie</h3>
+                    <p>Cinematic epic stories</p>
+                </div>
+                <div class="option-card" data-value="Platform" onclick="app.selectType('Platform')">
+                    <div class="icon">📱</div>
+                    <h3>Platform / Commercial</h3>
+                    <p>Short-form social content</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Screen: Duration Input -->
+        <section id="screen-duration" class="screen hidden">
+            <button class="btn-back" onclick="app.goBack()">&#8592; Back</button>
+            <div class="header-text">
+                <h2>Project Duration</h2>
+                <p class="subtitle">How long is the intended content?</p>
+            </div>
+            <div class="duration-container">
+                <div class="input-group">
+                    <input type="text" id="project-duration" placeholder="e.g. 5 minutes, 30 seconds"
+                        autocomplete="off">
+                </div>
+                <div class="quick-durations">
+                    <button class="btn-chip" onclick="app.setQuickDuration('15 Seconds')">15s</button>
+                    <button class="btn-chip" onclick="app.setQuickDuration('30 Seconds')">30s</button>
+                    <button class="btn-chip" onclick="app.setQuickDuration('1 Minute')">1m</button>
+                    <button class="btn-chip" onclick="app.setQuickDuration('3 Minutes')">3m</button>
+                    <button class="btn-chip" onclick="app.setQuickDuration('10 Minutes')">10m</button>
+                </div>
+                <button id="btn-submit-duration" class="btn primary">Continue <span class="arrow">→</span></button>
+            </div>
+        </section>
+
+        <!-- Screen: Genre Selection -->
+        <section id="screen-genre" class="screen hidden">
+            <button class="btn-back" onclick="app.goBack()">&#8592; Back</button>
+            <div class="header-text">
+                <h2>Select Genre</h2>
+                <p class="subtitle">Choose the mood for your storyboard</p>
+            </div>
+            <div class="options-grid genre-grid" id="genre-grid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- Screen: Generating (Loading State) -->
+        <section id="screen-generating" class="screen hidden">
+            <div class="generating-container">
+                <div class="ai-orb"></div>
+                <h2 class="gradient-text pulse-text">Generating your storyboard...</h2>
+                <div class="loading-steps">
+                    <p class="step active" id="step-1">Analyzing project parameters...</p>
+                    <p class="step" id="step-2">Crafting narrative arc...</p>
+                    <p class="step" id="step-3">Visualizing scenes and camera angles...</p>
+                    <p class="step" id="step-4">Finalizing storyboard format...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Screen: Editor (Redesigned) -->
+        <section id="screen-editor" class="screen hidden">
+            <!-- Hidden File Input -->
+            <input type="file" id="file-upload" accept=".txt,.pdf" style="display: none;">
+
+            <!-- Top Nav / File Upload Buttons (Yellow) -->
+            <div class="editor-top-nav">
+                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">Character
+                    Sheets</button>
+                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">World
+                    Building</button>
+                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">Key
+                    Items</button>
+                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">Plot
+                    Outline</button>
+                <button class="btn nav-btn yellow"
+                    onclick="document.getElementById('file-upload').click()">Timeline</button>
+            </div>
+
+            <!-- Main Tri-Column Layout -->
+            <div class="editor-main-layout">
+
+                <!-- Left Column: Chat & Input (Orange) -->
+                <div class="layout-col left-col">
+                    <div class="panel chat-room orange-panel">
+                        <div class="panel-header">AI Chat Room</div>
+                        <div class="panel-body" id="chat-messages">
+                            <!-- Chat messages output here -->
+                        </div>
+                    </div>
+                    <div class="panel user-input orange-panel">
+                        <textarea placeholder="User Input..." id="chat-input"></textarea>
+                    </div>
+                </div>
+
+                <!-- Middle Column: Fields (Orange) -->
+                <div class="layout-col middle-col">
+                    <div class="field-group orange-panel">
+                        <label>時 (Time)</label>
+                        <input type="text" id="editor-time" placeholder="Enter time...">
+                    </div>
+                    <div class="field-group orange-panel">
+                        <label>地 (Location)</label>
+                        <input type="text" id="editor-location" placeholder="Enter location...">
+                    </div>
+                    <div class="field-group orange-panel">
+                        <label>人 (Character)</label>
+                        <input type="text" id="editor-character" placeholder="Enter characters...">
+                    </div>
+                    <div class="field-group orange-panel">
+                        <label>重要物品 (Key Items)</label>
+                        <input type="text" id="editor-items" placeholder="Enter key items...">
+                    </div>
+                    <div class="field-group orange-panel">
+                        <label>生成长度 (Duration)</label>
+                        <input type="text" id="editor-length" readonly>
+                    </div>
+                    <div class="field-group orange-panel">
+                        <label>特殊气氛 (Special Vibe)</label>
+                        <input type="text" id="editor-vibe" placeholder="Enter vibe...">
+                    </div>
+                </div>
+
+                <!-- Right Column: AI Output (Green) -->
+                <div class="layout-col right-col">
+                    <div class="panel ai-output green-panel">
+                        <div class="panel-header">AI Output</div>
+                        <div class="panel-body" id="storyboard-output" contenteditable="true">
+                            <!-- Generated draft storyboard displayed and editable here -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Action -->
+            <div class="editor-bottom-action">
+                <button class="btn green" id="btn-save" onclick="app.downloadPDF()">Save</button>
+                <button class="btn secondary" onclick="app.resetFlow()" style="margin-left: 1rem;">Start New</button>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="js/gemini.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
