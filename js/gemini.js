@@ -1,9 +1,27 @@
 // js/gemini.js
 
 const geminiAPI = {
-    // The API key provided by the user
-    API_KEY: 'AIzaSyAK6iX-LM7z_jSGAV-PJD2sEf-oE4qKWZg',
+    // API key is loaded lazily from 'API Key.csv' on first use
+    _apiKey: null,
     API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
+
+    // Fetch and cache the API key from the CSV file
+    async getApiKey() {
+        if (this._apiKey) return this._apiKey;
+        try {
+            const response = await fetch('API Key.csv');
+            if (!response.ok) throw new Error(`Could not load API Key.csv (status ${response.status})`);
+            const text = await response.text();
+            // Use the first non-empty line as the key
+            const key = text.split('\n').map(l => l.trim()).find(l => l.length > 0);
+            if (!key) throw new Error('API Key.csv is empty or has no valid key.');
+            this._apiKey = key;
+            return this._apiKey;
+        } catch (err) {
+            console.error('Failed to load API key:', err);
+            throw new Error('Could not load the API key from "API Key.csv". Make sure the file exists in the project root.');
+        }
+    },
 
     async generateStoryboard(projectData) {
         const { name, description, type, duration, genre } = projectData;
@@ -25,7 +43,8 @@ Make it inspiring and ready for the user to edit directly in the browser. Do not
 `;
 
         try {
-            const response = await fetch(`${this.API_URL}?key=${this.API_KEY}`, {
+            const apiKey = await this.getApiKey();
+            const response = await fetch(`${this.API_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -101,7 +120,8 @@ Sure! I have updated the scene to include the magical sword in the forest. You w
 `;
 
         try {
-            const response = await fetch(`${this.API_URL}?key=${this.API_KEY}`, {
+            const apiKey = await this.getApiKey();
+            const response = await fetch(`${this.API_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
