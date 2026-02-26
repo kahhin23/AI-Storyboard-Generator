@@ -1,8 +1,10 @@
 // js/gemini.js
 
 const geminiAPI = {
-    // The API key provided by the user
-    API_KEY: 'AIzaSyDh8xAvGgnKES5byHKDV4lfUzTS-rEpBHw',
+    // Retrieve the API key from localStorage dynamically
+    get API_KEY() {
+        return localStorage.getItem('gemini_api_key') || '';
+    },
     API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
 
     async generateStoryboard(projectData) {
