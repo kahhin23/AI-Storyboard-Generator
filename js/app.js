@@ -34,6 +34,12 @@ const app = {
         document.getElementById('btn-create-project').addEventListener('click', () => {
             const name = document.getElementById('project-name').value.trim();
             const desc = document.getElementById('project-description').value.trim();
+            const apiKey = document.getElementById('api-key-input').value.trim();
+
+            if (!apiKey) {
+                this.showError('api-key-input', 'Please enter your Google Gemini API key.');
+                return;
+            }
 
             if (!name) {
                 this.showError('project-name', 'Please enter a project name.');
@@ -47,12 +53,35 @@ const app = {
 
         // Duration Screen
         document.getElementById('btn-submit-duration').addEventListener('click', () => {
-            const duration = document.getElementById('project-duration').value.trim();
-            if (!duration) {
-                this.showError('project-duration', 'Please enter or select a duration.');
-                return;
+            const type = this.state.project.type;
+
+            if (type === 'Drama') {
+                const episodes = parseInt(document.getElementById('drama-episodes').value, 10);
+                const minutes = parseInt(document.getElementById('drama-minutes').value, 10);
+
+                if (!episodes || episodes < 1) {
+                    this.showError('drama-episodes', 'Please enter the number of episodes.');
+                    return;
+                }
+                if (!minutes || minutes < 20) {
+                    this.showError('drama-minutes', 'Each episode must be at least 20 minutes.');
+                    return;
+                }
+                this.state.project.duration = `${episodes} episode${episodes > 1 ? 's' : ''}, ${minutes} minutes each`;
+            } else {
+                const minMinutes = type === 'Movie' ? 90 : 1;
+                const val = parseInt(document.getElementById('project-duration').value, 10);
+
+                if (!val || val < minMinutes) {
+                    const msg = type === 'Movie'
+                        ? 'Movie duration must be at least 90 minutes (1.5 hours).'
+                        : 'Please enter a valid duration.';
+                    this.showError('project-duration', msg);
+                    return;
+                }
+                this.state.project.duration = `${val} minutes`;
             }
-            this.state.project.duration = duration;
+
             this.navigateTo('genre');
         });
 
@@ -60,16 +89,56 @@ const app = {
         document.getElementById('project-name').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') document.getElementById('btn-create-project').click();
         });
-        document.getElementById('project-duration').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('btn-submit-duration').click();
-        });
 
-        // Handle File Upload
-        document.getElementById('file-upload').addEventListener('change', (e) => {
+        // Handle File Upload — reads file and sends to Gemini
+        document.getElementById('file-upload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if (file) {
-                const chatMessages = document.getElementById('chat-messages');
-                chatMessages.innerHTML += `<div style="color:#FFB300; font-size:0.9rem;">-> ${file.name} uploaded successfully!</div>`;
+            if (!file) return;
+
+            // Reset so the same file can be re-uploaded later
+            e.target.value = '';
+
+            const label = this._activeUploadLabel || 'Reference Document';
+            const chatMessages = document.getElementById('chat-messages');
+
+            // Only .txt files supported natively
+            if (!file.name.endsWith('.txt')) {
+                chatMessages.innerHTML += `<div class="chat-msg chat-msg--warn">⚠️ Only <strong>.txt</strong> files are supported right now. Please convert your file to plain text and try again.</div>`;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return;
+            }
+
+            // Read file as text
+            const fileText = await file.text();
+
+            // Show loading
+            const loadingId = 'loading-' + Date.now();
+            chatMessages.innerHTML += `<div class="chat-msg chat-msg--info">📄 <strong>${file.name}</strong> uploaded. Applying <em>${label}</em> to your storyboard...</div>`;
+            chatMessages.innerHTML += `<div id="${loadingId}" class="chat-msg chat-msg--loading">AI is reviewing your ${label}...</div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const middleData = {
+                time: document.getElementById('editor-time').value.trim(),
+                location: document.getElementById('editor-location').value.trim(),
+                character: document.getElementById('editor-character').value.trim(),
+                items: document.getElementById('editor-items').value.trim(),
+                duration: document.getElementById('editor-length').value.trim(),
+                vibe: document.getElementById('editor-vibe').value.trim()
+            };
+            const currentHtml = document.getElementById('storyboard-output').innerHTML;
+
+            try {
+                const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData);
+
+                document.getElementById(loadingId)?.remove();
+                chatMessages.innerHTML += `<div class="chat-msg chat-msg--ai"><strong>AI:</strong> ${response.chatReply}</div>`;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                this.diffAndRender(currentHtml, response.newHtml);
+
+            } catch (error) {
+                document.getElementById(loadingId)?.remove();
+                chatMessages.innerHTML += `<div class="chat-msg chat-msg--error"><strong>Error:</strong> Failed to apply ${label}. Please try again.</div>`;
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         });
@@ -113,15 +182,9 @@ const app = {
                         const loadingMessage = document.getElementById(loadingId);
                         if (loadingMessage) loadingMessage.remove();
 
-                        // 5. Update Chat & Storyboard
-                        chatMessages.innerHTML += `<div style="color:white; font-size:0.95rem; margin-top:0.5rem; margin-bottom:0.8rem; padding:0.8rem; background:rgba(59, 130, 246, 0.1); border-radius:8px; border-left:2px solid var(--accent-primary);"><strong>AI:</strong> ${response.chatReply}</div>`;
-
-                        const outputDiv = document.getElementById('storyboard-output');
-                        outputDiv.style.opacity = '0';
-                        setTimeout(() => {
-                            outputDiv.innerHTML = response.newHtml;
-                            outputDiv.style.opacity = '1';
-                        }, 200);
+                        // 5. Update Chat & Storyboard with diff highlights
+                        chatMessages.innerHTML += `<div class="chat-msg chat-msg--ai"><strong>AI:</strong> ${response.chatReply}</div>`;
+                        this.diffAndRender(currentHtml, response.newHtml);
 
                     } catch (error) {
                         const loadingMessage = document.getElementById(loadingId);
@@ -186,13 +249,64 @@ const app = {
     selectType(type) {
         this.state.project.type = type;
         this.navigateTo('duration');
+        // Setup the duration screen after a short delay to let the screen appear
+        setTimeout(() => this.setupDurationScreen(type), 420);
     },
 
-    setQuickDuration(duration) {
-        document.getElementById('project-duration').value = duration;
-        this.state.project.duration = duration;
-        // Removed auto-navigation so the user can verify their input before clicking Continue
-        // this.navigateTo('genre');
+    setupDurationScreen(type) {
+        const standard = document.getElementById('duration-standard');
+        const drama = document.getElementById('duration-drama');
+        const subtitle = document.getElementById('duration-subtitle');
+        const hint = document.getElementById('duration-min-hint');
+        const chipsStd = document.getElementById('quick-durations-standard');
+
+        // Reset fields
+        document.getElementById('project-duration').value = '';
+        document.getElementById('drama-episodes').value = '';
+        document.getElementById('drama-minutes').value = '';
+
+        if (type === 'Drama') {
+            standard.style.display = 'none';
+            drama.style.display = 'block';
+            subtitle.textContent = 'How many episodes, and how long is each one?';
+            hint.textContent = '⚠️ Minimum 20 minutes per episode.';
+        } else if (type === 'Movie') {
+            standard.style.display = 'block';
+            drama.style.display = 'none';
+            subtitle.textContent = 'How long is your movie?';
+            hint.textContent = '⚠️ Minimum duration: 90 minutes (1 hour 30 min).';
+            document.getElementById('project-duration').min = 90;
+            document.getElementById('project-duration').placeholder = 'e.g. 120';
+            chipsStd.innerHTML = `
+                <button class="btn-chip" onclick="app.setQuickDuration(90)">90 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(100)">100 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(120)">120 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(150)">150 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(180)">180 min</button>
+            `;
+        } else { // Platform
+            standard.style.display = 'block';
+            drama.style.display = 'none';
+            subtitle.textContent = 'How long is the intended content?';
+            hint.textContent = '';
+            document.getElementById('project-duration').min = 1;
+            document.getElementById('project-duration').placeholder = 'e.g. 30';
+            chipsStd.innerHTML = `
+                <button class="btn-chip" onclick="app.setQuickDuration(1)">1 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(3)">3 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(5)">5 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(10)">10 min</button>
+                <button class="btn-chip" onclick="app.setQuickDuration(15)">15 min</button>
+            `;
+        }
+    },
+
+    setQuickDuration(minutes) {
+        document.getElementById('project-duration').value = minutes;
+    },
+
+    setDramaQuick(minutes) {
+        document.getElementById('drama-minutes').value = minutes;
     },
 
     selectGenre(genre) {
@@ -284,6 +398,8 @@ const app = {
         document.getElementById('project-name').value = '';
         document.getElementById('project-description').value = '';
         document.getElementById('project-duration').value = '';
+        document.getElementById('drama-episodes').value = '';
+        document.getElementById('drama-minutes').value = '';
 
         // Reset loading screen UI just in case
         document.querySelector('.generating-container').innerHTML = `
@@ -350,6 +466,39 @@ const app = {
 
             container.appendChild(particle);
         }
+    },
+
+    triggerFileUpload(buttonElement) {
+        this._activeUploadLabel = buttonElement.getAttribute('data-label') || 'Document';
+        document.getElementById('file-upload').click();
+    },
+
+    diffAndRender(oldHtml, newHtml) {
+        const outputElement = document.getElementById('storyboard-output');
+
+        // Simple DOM-based block diffing
+        const oldDiv = document.createElement('div');
+        oldDiv.innerHTML = oldHtml;
+        const newDiv = document.createElement('div');
+        newDiv.innerHTML = newHtml;
+
+        const oldBlocks = Array.from(oldDiv.children).map(el => el.textContent.trim());
+        const newElements = Array.from(newDiv.children);
+
+        const resultHtml = newElements.map(el => {
+            const textContent = el.textContent.trim();
+            // If the block is completely new or its text changed, highlight it
+            if (!oldBlocks.includes(textContent)) {
+                return `<div class="changed-block">${el.outerHTML}</div>`;
+            }
+            return el.outerHTML;
+        }).join('\n');
+
+        outputElement.style.opacity = '0';
+        setTimeout(() => {
+            outputElement.innerHTML = resultHtml;
+            outputElement.style.opacity = '1';
+        }, 200);
     },
 
     downloadPDF() {

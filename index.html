@@ -32,6 +32,11 @@
                         placeholder="What is this about? e.g. A story about a dog finding its way home..."
                         rows="3"></textarea>
                 </div>
+                <div class="input-group">
+                    <label for="api-key-input">Google Gemini API Key</label>
+                    <input type="password" id="api-key-input" placeholder="Paste your API key here..."
+                        autocomplete="off">
+                </div>
                 <button id="btn-create-project" class="btn primary glowing">Start Journey <span
                         class="arrow">→</span></button>
             </div>
@@ -68,20 +73,42 @@
             <button class="btn-back" onclick="app.goBack()">&#8592; Back</button>
             <div class="header-text">
                 <h2>Project Duration</h2>
-                <p class="subtitle">How long is the intended content?</p>
+                <p class="subtitle" id="duration-subtitle">How long is the intended content?</p>
             </div>
             <div class="duration-container">
-                <div class="input-group">
-                    <input type="text" id="project-duration" placeholder="e.g. 5 minutes, 30 seconds"
-                        autocomplete="off">
+
+                <!-- Standard single-duration input (Movie / Platform) -->
+                <div id="duration-standard">
+                    <div class="input-group">
+                        <input type="number" id="project-duration" placeholder="e.g. 90" autocomplete="off" min="1">
+                        <span class="input-unit">minutes</span>
+                    </div>
+                    <div class="quick-durations" id="quick-durations-standard">
+                        <!-- Chips populated by JS -->
+                    </div>
                 </div>
-                <div class="quick-durations">
-                    <button class="btn-chip" onclick="app.setQuickDuration('15 Seconds')">15s</button>
-                    <button class="btn-chip" onclick="app.setQuickDuration('30 Seconds')">30s</button>
-                    <button class="btn-chip" onclick="app.setQuickDuration('1 Minute')">1m</button>
-                    <button class="btn-chip" onclick="app.setQuickDuration('3 Minutes')">3m</button>
-                    <button class="btn-chip" onclick="app.setQuickDuration('10 Minutes')">10m</button>
+
+                <!-- Drama-specific dual input -->
+                <div id="duration-drama" style="display:none;">
+                    <div class="input-group">
+                        <label for="drama-episodes">Number of Episodes</label>
+                        <input type="number" id="drama-episodes" placeholder="e.g. 12" autocomplete="off" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label for="drama-minutes">Minutes per Episode <span class="input-hint">(min. 20
+                                min)</span></label>
+                        <input type="number" id="drama-minutes" placeholder="e.g. 45" autocomplete="off" min="20">
+                    </div>
+                    <div class="quick-durations" id="quick-durations-drama">
+                        <button class="btn-chip" onclick="app.setDramaQuick(20)">20 min</button>
+                        <button class="btn-chip" onclick="app.setDramaQuick(30)">30 min</button>
+                        <button class="btn-chip" onclick="app.setDramaQuick(45)">45 min</button>
+                        <button class="btn-chip" onclick="app.setDramaQuick(60)">60 min</button>
+                    </div>
                 </div>
+
+                <p class="duration-min-hint" id="duration-min-hint"></p>
+
                 <button id="btn-submit-duration" class="btn primary">Continue <span class="arrow">→</span></button>
             </div>
         </section>
@@ -119,16 +146,16 @@
 
             <!-- Top Nav / File Upload Buttons (Yellow) -->
             <div class="editor-top-nav">
-                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">Character
-                    Sheets</button>
-                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">World
-                    Building</button>
-                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">Key
+                <button class="btn nav-btn yellow" data-label="Character Sheets"
+                    onclick="app.triggerFileUpload(this)">Character Sheets</button>
+                <button class="btn nav-btn yellow" data-label="World Building"
+                    onclick="app.triggerFileUpload(this)">World Building</button>
+                <button class="btn nav-btn yellow" data-label="Key Items" onclick="app.triggerFileUpload(this)">Key
                     Items</button>
-                <button class="btn nav-btn yellow" onclick="document.getElementById('file-upload').click()">Plot
+                <button class="btn nav-btn yellow" data-label="Plot Outline" onclick="app.triggerFileUpload(this)">Plot
                     Outline</button>
-                <button class="btn nav-btn yellow"
-                    onclick="document.getElementById('file-upload').click()">Timeline</button>
+                <button class="btn nav-btn yellow" data-label="Timeline"
+                    onclick="app.triggerFileUpload(this)">Timeline</button>
             </div>
 
             <!-- Main Tri-Column Layout -->
@@ -183,14 +210,12 @@
                             <!-- Generated draft storyboard displayed and editable here -->
                         </div>
                     </div>
+                    <div class="editor-bottom-action">
+                        <button class="btn green" id="btn-save" onclick="app.downloadPDF()">Save</button>
+                        <button class="btn secondary" onclick="app.resetFlow()">Start New</button>
+                    </div>
                 </div>
 
-            </div>
-
-            <!-- Bottom Action -->
-            <div class="editor-bottom-action">
-                <button class="btn green" id="btn-save" onclick="app.downloadPDF()">Save</button>
-                <button class="btn secondary" onclick="app.resetFlow()" style="margin-left: 1rem;">Start New</button>
             </div>
         </section>
 
