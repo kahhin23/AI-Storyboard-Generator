@@ -131,15 +131,12 @@ const app = {
                 const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData);
 
                 document.getElementById(loadingId)?.remove();
-                chatMessages.innerHTML += `<div class="chat-msg chat-msg--ai"><strong>AI:</strong> ${response.chatReply}</div>`;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-
+                this.addChatMessage('ai', response.chatReply);
                 this.diffAndRender(currentHtml, response.newHtml);
 
             } catch (error) {
                 document.getElementById(loadingId)?.remove();
-                chatMessages.innerHTML += `<div class="chat-msg chat-msg--error"><strong>Error:</strong> Failed to apply ${label}. Please try again.</div>`;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                this.addChatMessage('error', `Failed to apply ${label}. Please try again.`);
             }
         });
 
@@ -154,7 +151,7 @@ const app = {
                     const chatMessages = document.getElementById('chat-messages');
 
                     // 1. Display User Message
-                    chatMessages.innerHTML += `<div style="color:var(--text-primary); font-size:0.95rem;"><strong>You:</strong> ${val}</div>`;
+                    this.addChatMessage('user', val);
                     inputElement.value = '';
                     inputElement.disabled = true; // Disable input while waiting
 
@@ -183,22 +180,157 @@ const app = {
                         if (loadingMessage) loadingMessage.remove();
 
                         // 5. Update Chat & Storyboard with diff highlights
-                        chatMessages.innerHTML += `<div class="chat-msg chat-msg--ai"><strong>AI:</strong> ${response.chatReply}</div>`;
+                        this.addChatMessage('ai', response.chatReply);
                         this.diffAndRender(currentHtml, response.newHtml);
 
                     } catch (error) {
                         const loadingMessage = document.getElementById(loadingId);
                         if (loadingMessage) loadingMessage.remove();
-                        chatMessages.innerHTML += `<div style="color:#ef4444; font-size:0.95rem;"><strong>Error:</strong> Failed to apply changes. Try again later.</div>`;
+                        this.addChatMessage('error', 'Failed to apply changes. Try again later.');
                     }
 
                     // 6. Cleanup
                     inputElement.disabled = false;
                     setTimeout(() => inputElement.focus(), 10);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
             }
         });
+    },
+
+    /**
+     * Splits HTML content into sentences while preserving HTML tags.
+     * Each sentence is wrapped in a span with an edit button.
+     */
+    wrapTextInSentences(html) {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        const processNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent;
+                // Split by sentence endings (. ! ?) followed by space or end of string
+                const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [text];
+
+                const fragment = document.createDocumentFragment();
+                sentences.forEach(s => {
+                    if (s.trim().length === 0) {
+                        fragment.appendChild(document.createTextNode(s));
+                        return;
+                    }
+                    const span = document.createElement('span');
+                    span.className = 'editable-sentence';
+                    span.dataset.original = s;
+
+                    const id = 'sent-' + Math.random().toString(36).substr(2, 9);
+                    span.id = id;
+
+                    span.innerHTML = `<span class="text-body">${s}</span>
+                        <div class="edit-actions">
+                            <button class="edit-btn-small" onclick="event.stopPropagation(); app.toggleEdit('${id}')">Edit</button>
+                        </div>`;
+                    fragment.appendChild(span);
+                });
+                return fragment;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // Don't split inside headers or short tags
+                if (['H1', 'H2', 'H3', 'BUTTON'].includes(node.tagName)) {
+                    return node.cloneNode(true);
+                }
+                const newEl = node.cloneNode(false);
+                Array.from(node.childNodes).forEach(child => {
+                    const processed = processNode(child);
+                    if (processed) newEl.appendChild(processed);
+                });
+                return newEl;
+            }
+            return node.cloneNode(true);
+        };
+
+        const result = document.createDocumentFragment();
+        Array.from(temp.childNodes).forEach(node => {
+            const processed = processNode(node);
+            if (processed) result.appendChild(processed);
+        });
+
+        const output = document.createElement('div');
+        output.appendChild(result);
+        return output.innerHTML;
+    },
+
+    addChatMessage(role, text) {
+        const chatMessages = document.getElementById('chat-messages');
+        const id = 'msg-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
+        let msgHtml = '';
+        if (role === 'user' || role === 'ai') {
+            const label = role === 'user' ? 'You' : 'AI';
+            const className = role === 'ai' ? 'chat-msg chat-msg--ai' : '';
+            const processedText = this.wrapTextInSentences(text);
+
+            msgHtml = `<div class="${className}" id="${id}" style="font-size:0.95rem; padding: 5px;">
+                <strong>${label}:</strong> ${processedText}
+            </div>`;
+        } else {
+            const className = role === 'error' ? 'chat-msg--error' : (role === 'warn' ? 'chat-msg--warn' : 'chat-msg--info');
+            msgHtml = `<div class="chat-msg ${className}">${text}</div>`;
+        }
+
+        chatMessages.insertAdjacentHTML('beforeend', msgHtml);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return id;
+    },
+
+    toggleEdit(id) {
+        const target = document.getElementById(id);
+        const textBody = target.querySelector('.text-body');
+        const currentText = textBody.innerText;
+
+        // Hide text and actions
+        textBody.style.display = 'none';
+        const actions = target.querySelector('.edit-actions');
+        if (actions) actions.style.display = 'none';
+
+        // Add editing UI
+        const editUi = document.createElement('div');
+        editUi.className = 'edit-ui';
+        editUi.innerHTML = `
+            <textarea class="edit-textarea">${currentText}</textarea>
+            <div class="edit-controls">
+                <button class="edit-cancel-btn" onclick="event.stopPropagation(); app.cancelEdit('${id}')">Cancel</button>
+                <button class="edit-save-btn" onclick="event.stopPropagation(); app.saveEdit('${id}')">Save</button>
+            </div>
+        `;
+        target.appendChild(editUi);
+        const textarea = editUi.querySelector('textarea');
+        textarea.focus();
+
+        // Prevent clicking textarea from triggering parent events
+        textarea.addEventListener('click', e => e.stopPropagation());
+    },
+
+    cancelEdit(id) {
+        const target = document.getElementById(id);
+        const textBody = target.querySelector('.text-body');
+        const editUi = target.querySelector('.edit-ui');
+
+        if (editUi) editUi.remove();
+        textBody.style.display = '';
+        const actions = target.querySelector('.edit-actions');
+        if (actions) actions.style.display = '';
+    },
+
+    saveEdit(id) {
+        const target = document.getElementById(id);
+        const textBody = target.querySelector('.text-body');
+        const editUi = target.querySelector('.edit-ui');
+        const newText = editUi.querySelector('textarea').value;
+
+        textBody.innerText = newText;
+
+        if (editUi) editUi.remove();
+        textBody.style.display = '';
+        const actions = target.querySelector('.edit-actions');
+        if (actions) actions.style.display = '';
     },
 
     populateGenres() {
@@ -380,11 +512,41 @@ const app = {
         document.getElementById('editor-items').value = '';
 
         // Populate Right Column (AI Output format is raw HTML)
-        output.innerHTML = storyboardData;
+        this.renderStoryboard(storyboardData);
 
         // Initialize Chat Room
-        const chatRoom = document.getElementById('chat-messages');
-        chatRoom.innerHTML = `<div style="color:white; font-size:0.95rem;"><strong>AI:</strong> Welcome to the Editor! I have prepared a draft based on '${this.state.project.name}'. Feel free to edit the text on the right directly, or ask me to make changes.</div>`;
+        this.addChatMessage('ai', `Welcome to the Editor! I have prepared a draft based on '${this.state.project.name}'. Feel free to edit the text on the right directly, or ask me to make changes.`);
+    },
+
+    renderStoryboard(html) {
+        const output = document.getElementById('storyboard-output');
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        const children = Array.from(tempDiv.children);
+        let sceneHtml = '';
+        let currentScene = null;
+        let sceneIndex = 0;
+
+        children.forEach(child => {
+            if (child.tagName === 'H3') {
+                if (currentScene) sceneHtml += this.wrapScene(currentScene, sceneIndex++);
+                currentScene = child.outerHTML;
+            } else {
+                if (!currentScene) currentScene = '';
+                currentScene += child.outerHTML;
+            }
+        });
+        if (currentScene) sceneHtml += this.wrapScene(currentScene, sceneIndex);
+
+        output.innerHTML = sceneHtml;
+    },
+
+    wrapScene(html, index) {
+        const processedHtml = this.wrapTextInSentences(html);
+        return `<div class="scene-container" id="scene-${index}">
+            <div class="scene-content">${processedHtml}</div>
+        </div>`;
     },
 
     resetFlow() {
@@ -496,7 +658,8 @@ const app = {
 
         outputElement.style.opacity = '0';
         setTimeout(() => {
-            outputElement.innerHTML = resultHtml;
+            this.renderStoryboard(newHtml);
+            // Re-apply diff highlights if necessary - for now we just re-render
             outputElement.style.opacity = '1';
         }, 200);
     },

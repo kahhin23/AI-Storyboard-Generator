@@ -973,3 +973,127 @@ input[type="number"] {
         opacity: 1;
     }
 }
+
+/* ───── Edit Functionality Styles ───── */
+.editable-container {
+    position: relative;
+    transition: background-color var(--transition-fast);
+    border-radius: 8px;
+}
+
+.editable-sentence {
+    position: relative;
+    display: inline;
+    padding: 2px 4px;
+    margin: 0 -2px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.editable-sentence:hover {
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.edit-actions {
+    position: absolute;
+    top: -20px;
+    right: 0;
+    display: none;
+    gap: 0.5rem;
+    z-index: 100;
+}
+
+.editable-sentence:hover>.edit-actions,
+.editable-container:hover>.edit-actions {
+    display: flex;
+}
+
+.edit-btn-small {
+    background: var(--accent-primary);
+    border: none;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.edit-btn-small:hover {
+    filter: brightness(1.2);
+    transform: scale(1.05);
+}
+
+/* In-place Editing UI */
+.edit-ui {
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+}
+
+.edit-textarea {
+    width: 100%;
+    min-height: 60px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid var(--accent-primary);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    outline: none;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.edit-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.edit-save-btn {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-cancel-btn {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.edit-save-btn:hover {
+    filter: brightness(1.1);
+}
+
+.edit-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+/* Scene Container for Storyboard */
+.scene-container {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px solid transparent;
+}
+
+.scene-container:hover {
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
