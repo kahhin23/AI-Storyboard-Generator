@@ -7,7 +7,8 @@ const app = {
             description: '',
             type: '',
             duration: '',
-            genre: ''
+            genre: '',
+            language: ''
         },
         currentScreen: 'home'
     },
@@ -23,9 +24,48 @@ const app = {
         { name: 'Fantasy', icon: '✨', desc: 'Magic & mythical' }
     ],
 
+    languages: [
+        { name: 'English', flag: '🇺🇸' },
+        { name: 'Chinese (Simplified)', flag: '🇨🇳' },
+        { name: 'Chinese (Traditional)', flag: '🇹🇼' },
+        { name: 'Japanese', flag: '🇯🇵' },
+        { name: 'Korean', flag: '🇰🇷' },
+        { name: 'Spanish', flag: '🇪🇸' },
+        { name: 'French', flag: '🇫🇷' },
+        { name: 'German', flag: '🇩🇪' },
+        { name: 'Portuguese', flag: '🇧🇷' },
+        { name: 'Italian', flag: '🇮🇹' },
+        { name: 'Russian', flag: '🇷🇺' },
+        { name: 'Arabic', flag: '🇸🇦' },
+        { name: 'Hindi', flag: '🇮🇳' },
+        { name: 'Bengali', flag: '🇧🇩' },
+        { name: 'Malay / Indonesian', flag: '🇲🇾' },
+        { name: 'Thai', flag: '🇹🇭' },
+        { name: 'Vietnamese', flag: '🇻🇳' },
+        { name: 'Turkish', flag: '🇹🇷' },
+        { name: 'Polish', flag: '🇵🇱' },
+        { name: 'Dutch', flag: '🇳🇱' },
+        { name: 'Swedish', flag: '🇸🇪' },
+        { name: 'Norwegian', flag: '🇳🇴' },
+        { name: 'Danish', flag: '🇩🇰' },
+        { name: 'Finnish', flag: '🇫🇮' },
+        { name: 'Czech', flag: '🇨🇿' },
+        { name: 'Romanian', flag: '🇷🇴' },
+        { name: 'Hungarian', flag: '🇭🇺' },
+        { name: 'Greek', flag: '🇬🇷' },
+        { name: 'Hebrew', flag: '🇮🇱' },
+        { name: 'Ukrainian', flag: '🇺🇦' },
+        { name: 'Swahili', flag: '🇰🇪' },
+        { name: 'Tagalog / Filipino', flag: '🇵🇭' },
+        { name: 'Persian (Farsi)', flag: '🇮🇷' },
+        { name: 'Urdu', flag: '🇵🇰' },
+        { name: 'Tamil', flag: '🇱🇰' }
+    ],
+
     init() {
         this.bindEvents();
         this.populateGenres();
+        this.populateLanguages();
         this.initParticles();
     },
 
@@ -121,14 +161,13 @@ const app = {
                 time: document.getElementById('editor-time').value.trim(),
                 location: document.getElementById('editor-location').value.trim(),
                 character: document.getElementById('editor-character').value.trim(),
-                items: document.getElementById('editor-items').value.trim(),
                 duration: document.getElementById('editor-length').value.trim(),
                 vibe: document.getElementById('editor-vibe').value.trim()
             };
             const currentHtml = document.getElementById('storyboard-output').innerHTML;
 
             try {
-                const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData);
+                const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData, this.state.project.language);
 
                 document.getElementById(loadingId)?.remove();
                 this.addChatMessage('ai', response.chatReply);
@@ -165,7 +204,6 @@ const app = {
                         time: document.getElementById('editor-time').value.trim(),
                         location: document.getElementById('editor-location').value.trim(),
                         character: document.getElementById('editor-character').value.trim(),
-                        items: document.getElementById('editor-items').value.trim(),
                         duration: document.getElementById('editor-length').value.trim(),
                         vibe: document.getElementById('editor-vibe').value.trim()
                     };
@@ -173,7 +211,7 @@ const app = {
 
                     // 4. Call Gemini modify function
                     try {
-                        const response = await geminiAPI.modifyStoryboard(currentHtml, middleData, val);
+                        const response = await geminiAPI.modifyStoryboard(currentHtml, middleData, val, this.state.project.language);
 
                         // Remove loading
                         const loadingMessage = document.getElementById(loadingId);
@@ -197,66 +235,6 @@ const app = {
         });
     },
 
-    /**
-     * Splits HTML content into sentences while preserving HTML tags.
-     * Each sentence is wrapped in a span with an edit button.
-     */
-    wrapTextInSentences(html) {
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-
-        const processNode = (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.textContent;
-                // Split by sentence endings (. ! ?) followed by space or end of string
-                const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [text];
-
-                const fragment = document.createDocumentFragment();
-                sentences.forEach(s => {
-                    if (s.trim().length === 0) {
-                        fragment.appendChild(document.createTextNode(s));
-                        return;
-                    }
-                    const span = document.createElement('span');
-                    span.className = 'editable-sentence';
-                    span.dataset.original = s;
-
-                    const id = 'sent-' + Math.random().toString(36).substr(2, 9);
-                    span.id = id;
-
-                    span.innerHTML = `<span class="text-body">${s}</span>
-                        <div class="edit-actions">
-                            <button class="edit-btn-small" onclick="event.stopPropagation(); app.toggleEdit('${id}')">Edit</button>
-                        </div>`;
-                    fragment.appendChild(span);
-                });
-                return fragment;
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                // Don't split inside headers or short tags
-                if (['H1', 'H2', 'H3', 'BUTTON'].includes(node.tagName)) {
-                    return node.cloneNode(true);
-                }
-                const newEl = node.cloneNode(false);
-                Array.from(node.childNodes).forEach(child => {
-                    const processed = processNode(child);
-                    if (processed) newEl.appendChild(processed);
-                });
-                return newEl;
-            }
-            return node.cloneNode(true);
-        };
-
-        const result = document.createDocumentFragment();
-        Array.from(temp.childNodes).forEach(node => {
-            const processed = processNode(node);
-            if (processed) result.appendChild(processed);
-        });
-
-        const output = document.createElement('div');
-        output.appendChild(result);
-        return output.innerHTML;
-    },
-
     addChatMessage(role, text) {
         const chatMessages = document.getElementById('chat-messages');
         const id = 'msg-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
@@ -264,11 +242,11 @@ const app = {
         let msgHtml = '';
         if (role === 'user' || role === 'ai') {
             const label = role === 'user' ? 'You' : 'AI';
-            const className = role === 'ai' ? 'chat-msg chat-msg--ai' : '';
-            const processedText = this.wrapTextInSentences(text);
-
-            msgHtml = `<div class="${className}" id="${id}" style="font-size:0.95rem; padding: 5px;">
-                <strong>${label}:</strong> ${processedText}
+            const labelColor = role === 'ai' ? 'color:#60a5fa; font-weight:700;' : 'color:#94a3b8; font-weight:700;';
+            const parsed = (typeof marked !== 'undefined') ? marked.parse(text) : text;
+            msgHtml = `<div id="${id}" style="font-size:0.92rem; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <span style="${labelColor} font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em;">${label}</span>
+                <div style="margin-top:0.2rem; line-height:1.6; color:var(--text-primary);">${parsed}</div>
             </div>`;
         } else {
             const className = role === 'error' ? 'chat-msg--error' : (role === 'warn' ? 'chat-msg--warn' : 'chat-msg--info');
@@ -278,59 +256,6 @@ const app = {
         chatMessages.insertAdjacentHTML('beforeend', msgHtml);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return id;
-    },
-
-    toggleEdit(id) {
-        const target = document.getElementById(id);
-        const textBody = target.querySelector('.text-body');
-        const currentText = textBody.innerText;
-
-        // Hide text and actions
-        textBody.style.display = 'none';
-        const actions = target.querySelector('.edit-actions');
-        if (actions) actions.style.display = 'none';
-
-        // Add editing UI
-        const editUi = document.createElement('div');
-        editUi.className = 'edit-ui';
-        editUi.innerHTML = `
-            <textarea class="edit-textarea">${currentText}</textarea>
-            <div class="edit-controls">
-                <button class="edit-cancel-btn" onclick="event.stopPropagation(); app.cancelEdit('${id}')">Cancel</button>
-                <button class="edit-save-btn" onclick="event.stopPropagation(); app.saveEdit('${id}')">Save</button>
-            </div>
-        `;
-        target.appendChild(editUi);
-        const textarea = editUi.querySelector('textarea');
-        textarea.focus();
-
-        // Prevent clicking textarea from triggering parent events
-        textarea.addEventListener('click', e => e.stopPropagation());
-    },
-
-    cancelEdit(id) {
-        const target = document.getElementById(id);
-        const textBody = target.querySelector('.text-body');
-        const editUi = target.querySelector('.edit-ui');
-
-        if (editUi) editUi.remove();
-        textBody.style.display = '';
-        const actions = target.querySelector('.edit-actions');
-        if (actions) actions.style.display = '';
-    },
-
-    saveEdit(id) {
-        const target = document.getElementById(id);
-        const textBody = target.querySelector('.text-body');
-        const editUi = target.querySelector('.edit-ui');
-        const newText = editUi.querySelector('textarea').value;
-
-        textBody.innerText = newText;
-
-        if (editUi) editUi.remove();
-        textBody.style.display = '';
-        const actions = target.querySelector('.edit-actions');
-        if (actions) actions.style.display = '';
     },
 
     populateGenres() {
@@ -371,7 +296,7 @@ const app = {
     },
 
     goBack() {
-        const flow = ['home', 'type', 'duration', 'genre', 'generating', 'editor'];
+        const flow = ['home', 'type', 'duration', 'genre', 'language', 'generating', 'editor'];
         const currentIndex = flow.indexOf(this.state.currentScreen);
         if (currentIndex > 0) {
             this.navigateTo(flow[currentIndex - 1]);
@@ -443,7 +368,28 @@ const app = {
 
     selectGenre(genre) {
         this.state.project.genre = genre;
+        this.navigateTo('language');
+    },
+
+    selectLanguage(language) {
+        this.state.project.language = language;
         this.startGeneration();
+    },
+
+    populateLanguages() {
+        const grid = document.getElementById('language-grid');
+        grid.innerHTML = '';
+
+        this.languages.forEach(lang => {
+            const card = document.createElement('div');
+            card.className = 'option-card language-card';
+            card.innerHTML = `
+                <div class="icon">${lang.flag}</div>
+                <h3>${lang.name}</h3>
+            `;
+            card.addEventListener('click', () => this.selectLanguage(lang.name));
+            grid.appendChild(card);
+        });
     },
 
     async startGeneration() {
@@ -503,13 +449,12 @@ const app = {
             return;
         }
 
-        // Populate Middle Column Fields
-        document.getElementById('editor-length').value = this.state.project.duration;
-        document.getElementById('editor-vibe').value = this.state.project.genre;
+        // Populate Middle Column Fields — start blank
+        document.getElementById('editor-length').value = '';
+        document.getElementById('editor-vibe').value = '';
         document.getElementById('editor-time').value = '';
         document.getElementById('editor-location').value = '';
         document.getElementById('editor-character').value = '';
-        document.getElementById('editor-items').value = '';
 
         // Populate Right Column (AI Output format is raw HTML)
         this.renderStoryboard(storyboardData);
@@ -543,9 +488,8 @@ const app = {
     },
 
     wrapScene(html, index) {
-        const processedHtml = this.wrapTextInSentences(html);
         return `<div class="scene-container" id="scene-${index}">
-            <div class="scene-content">${processedHtml}</div>
+            <div class="scene-content">${html}</div>
         </div>`;
     },
 
@@ -555,13 +499,19 @@ const app = {
             description: '',
             type: '',
             duration: '',
-            genre: ''
+            genre: '',
+            language: ''
         };
         document.getElementById('project-name').value = '';
         document.getElementById('project-description').value = '';
         document.getElementById('project-duration').value = '';
         document.getElementById('drama-episodes').value = '';
         document.getElementById('drama-minutes').value = '';
+        document.getElementById('editor-time').value = '';
+        document.getElementById('editor-location').value = '';
+        document.getElementById('editor-character').value = '';
+        document.getElementById('editor-length').value = '';
+        document.getElementById('editor-vibe').value = '';
 
         // Reset loading screen UI just in case
         document.querySelector('.generating-container').innerHTML = `

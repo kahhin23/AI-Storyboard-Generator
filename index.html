@@ -125,6 +125,18 @@
             </div>
         </section>
 
+        <!-- Screen: Language Selection -->
+        <section id="screen-language" class="screen hidden">
+            <button class="btn-back" onclick="app.goBack()">&#8592; Back</button>
+            <div class="header-text">
+                <h2>Select Language</h2>
+                <p class="subtitle">Choose the language for your storyboard output</p>
+            </div>
+            <div class="options-grid language-grid" id="language-grid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
         <!-- Screen: Generating (Loading State) -->
         <section id="screen-generating" class="screen hidden">
             <div class="generating-container">
@@ -146,14 +158,12 @@
 
             <!-- Top Nav / File Upload Buttons (Yellow) -->
             <div class="editor-top-nav">
-                <button class="btn nav-btn yellow" data-label="Character Sheets"
-                    onclick="app.triggerFileUpload(this)">Character Sheets</button>
+                <button class="btn nav-btn yellow" data-label="Synopsis"
+                    onclick="app.triggerFileUpload(this)">Synopsis</button>
+                <button class="btn nav-btn yellow" data-label="Characters"
+                    onclick="app.triggerFileUpload(this)">Characters</button>
                 <button class="btn nav-btn yellow" data-label="World Building"
                     onclick="app.triggerFileUpload(this)">World Building</button>
-                <button class="btn nav-btn yellow" data-label="Key Items" onclick="app.triggerFileUpload(this)">Key
-                    Items</button>
-                <button class="btn nav-btn yellow" data-label="Plot Outline" onclick="app.triggerFileUpload(this)">Plot
-                    Outline</button>
                 <button class="btn nav-btn yellow" data-label="Timeline"
                     onclick="app.triggerFileUpload(this)">Timeline</button>
             </div>
@@ -177,27 +187,23 @@
                 <!-- Middle Column: Fields (Orange) -->
                 <div class="layout-col middle-col">
                     <div class="field-group orange-panel">
-                        <label>時 (Time)</label>
+                        <label>Timing(时段)</label>
                         <input type="text" id="editor-time" placeholder="Enter time...">
                     </div>
                     <div class="field-group orange-panel">
-                        <label>地 (Location)</label>
+                        <label>Location(地点)</label>
                         <input type="text" id="editor-location" placeholder="Enter location...">
                     </div>
                     <div class="field-group orange-panel">
-                        <label>人 (Character)</label>
+                        <label>Character(人物)</label>
                         <input type="text" id="editor-character" placeholder="Enter characters...">
                     </div>
                     <div class="field-group orange-panel">
-                        <label>重要物品 (Key Items)</label>
-                        <input type="text" id="editor-items" placeholder="Enter key items...">
+                        <label>Duration(时长)</label>
+                        <input type="text" id="editor-length" placeholder="Enter duration...">
                     </div>
                     <div class="field-group orange-panel">
-                        <label>生成长度 (Duration)</label>
-                        <input type="text" id="editor-length">
-                    </div>
-                    <div class="field-group orange-panel">
-                        <label>特殊气氛 (Special Vibe)</label>
+                        <label>Vibe(气氛)</label>
                         <input type="text" id="editor-vibe" placeholder="Enter vibe...">
                     </div>
                 </div>
@@ -211,7 +217,7 @@
                         </div>
                     </div>
                     <div class="editor-bottom-action">
-                        <button class="btn green" id="btn-save" onclick="app.downloadPDF()">Save</button>
+                        <button class="btn green" id="btn-save" onclick="app.downloadPDF()">Export</button>
                         <button class="btn secondary" onclick="app.resetFlow()">Start New</button>
                     </div>
                 </div>

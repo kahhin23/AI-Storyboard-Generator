@@ -1,7 +1,7 @@
 // js/gemini.js
 
 const geminiAPI = {
-    API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
+    API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
 
     // Read the API key entered by the user on the home screen
     getApiKey() {
@@ -12,7 +12,8 @@ const geminiAPI = {
 
 
     async generateStoryboard(projectData) {
-        const { name, description, type, duration, genre } = projectData;
+        const { name, description, type, duration, genre, language } = projectData;
+        const langInstruction = language ? `IMPORTANT: Write ALL content (scene titles, descriptions, dialogue, labels, and narrative text) entirely in ${language}. Do not use any other language.` : '';
 
         // Construct the prompt requesting a readable storyboard output in HTML format
         const prompt = `
@@ -24,6 +25,9 @@ Create a detailed, shot-by-shot draft storyboard for a new project based on the 
 - Duration (Estimated length of final content): ${duration}
 - Genre/Mood: ${genre}
 - Brief Description/Concept: ${description || "No specific concept provided, invent a creative storyline."}
+- Output Language: ${language || 'English'}
+
+${langInstruction}
 
 Please format the output as clean HTML that can be directly inserted into an editable div.
 Use <h3> for scene titles, <p> for descriptions, and <ul> for lists of details (like Audio, Characters, Action).
@@ -53,7 +57,32 @@ Make it inspiring and ready for the user to edit directly in the browser. Do not
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error("API Error Response:", errorData);
+
+                // ← Key debug logs
+                console.error("=== GEMINI API ERROR FULL DETAILS ===");
+                console.error("Status:", response.status);
+                console.error("Error JSON:", JSON.stringify(errorData, null, 2));
+
+                // Detect free tier specifically (works for 429)
+                if (response.status === 429) {
+                    const errorMsg = errorData.error?.message || '';
+                    const details = errorData.error?.details || [];
+
+                    const isLikelyFreeTier =
+                        errorMsg.toLowerCase().includes('free tier') ||
+                        details.some(d =>
+                            (d.metadata?.quota_metric || '').includes('free_tier') ||
+                            (d.metadata?.quota_limit || '').includes('free_tier') ||
+                            (d.metadata?.quota_limit_value === '0' && (d.metadata?.quota_metric || '').includes('free'))
+                        );
+
+                    if (isLikelyFreeTier) {
+                        console.warn("→ STRONG INDICATOR: This is FREE TIER quota exceeded (look for 'free_tier_requests' in quota_metric)");
+                    } else {
+                        console.warn("→ This looks like PAID TIER or different limit (no 'free_tier' metric found)");
+                    }
+                }
+
                 throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
             }
 
@@ -74,22 +103,23 @@ Make it inspiring and ready for the user to edit directly in the browser. Do not
         }
     },
 
-    async modifyStoryboard(currentHtml, middleData, userMessage) {
+    async modifyStoryboard(currentHtml, middleData, userMessage, language) {
+        const langInstruction = language ? `IMPORTANT: Write ALL your response content in ${language}. This includes the storyboard HTML and your chat reply.` : '';
         // Construct a prompt that includes the current storyboard, the data in the middle column, and the user's instructions
         const prompt = `
 You are a professional storyboard artist and film director. 
 You are collaborating with a user to refine a storyboard draft. 
+${langInstruction}
 
 CURRENT STORYBOARD DRAFT (HTML):
 ${currentHtml}
 
 CURRENT SCENE PARAMETERS (From the Editor):
-- Time: ${middleData.time || "Not specified"}
+- Timing: ${middleData.time || "Not specified"}
 - Location: ${middleData.location || "Not specified"}
 - Character(s): ${middleData.character || "Not specified"}
-- Key Items: ${middleData.items || "Not specified"}
 - Duration: ${middleData.duration || "Not specified"}
-- Special Vibe: ${middleData.vibe || "Not specified"}
+- Vibe / Atmosphere: ${middleData.vibe || "Not specified"}
 
 USER'S INSTRUCTION / CHAT MESSAGE:
 "${userMessage}"
@@ -98,7 +128,7 @@ TASK:
 1. Update the CURRENT STORYBOARD DRAFT to reflect the user's instructions. Keep the overall HTML structure identical (using <h3>, <p>, <ul>).
 2. Incorporate the CURRENT SCENE PARAMETERS into the text or structure where they naturally fit, especially if the user asks you to apply them.
 3. You must output exactly TWO things, separated by a unique delimiter "|||---|||". 
-   - First part: A conversational response to the user's chat message (plain text, friendly, brief).
+   - First part: A conversational response to the user's chat message (plain text, friendly, brief). Write this reply in ${language || 'English'}.
    - Second part: The fully updated HTML for the storyboard. Do not wrap this second part in markdown code blocks.
 
 Example Output format:
@@ -130,7 +160,32 @@ Sure! I have updated the scene to include the magical sword in the forest. You w
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error("API Error Response:", errorData);
+
+                // ← Key debug logs
+                console.error("=== GEMINI API ERROR FULL DETAILS ===");
+                console.error("Status:", response.status);
+                console.error("Error JSON:", JSON.stringify(errorData, null, 2));
+
+                // Detect free tier specifically (works for 429)
+                if (response.status === 429) {
+                    const errorMsg = errorData.error?.message || '';
+                    const details = errorData.error?.details || [];
+
+                    const isLikelyFreeTier =
+                        errorMsg.toLowerCase().includes('free tier') ||
+                        details.some(d =>
+                            (d.metadata?.quota_metric || '').includes('free_tier') ||
+                            (d.metadata?.quota_limit || '').includes('free_tier') ||
+                            (d.metadata?.quota_limit_value === '0' && (d.metadata?.quota_metric || '').includes('free'))
+                        );
+
+                    if (isLikelyFreeTier) {
+                        console.warn("→ STRONG INDICATOR: This is FREE TIER quota exceeded (look for 'free_tier_requests' in quota_metric)");
+                    } else {
+                        console.warn("→ This looks like PAID TIER or different limit (no 'free_tier' metric found)");
+                    }
+                }
+
                 throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
             }
 
@@ -160,10 +215,12 @@ Sure! I have updated the scene to include the magical sword in the forest. You w
         }
     },
 
-    async ingestFileContext(label, fileText, currentHtml, middleData) {
+    async ingestFileContext(label, fileText, currentHtml, middleData, language) {
+        const langInstruction = language ? `IMPORTANT: Write ALL your response content in ${language}. This includes the updated storyboard HTML and your chat reply.` : '';
         const prompt = `
 You are a professional storyboard artist and film director.
 You are collaborating with a user to refine a storyboard. The user has just uploaded a reference document.
+${langInstruction}
 
 REFERENCE DOCUMENT TYPE: ${label}
 REFERENCE DOCUMENT CONTENT:
@@ -175,23 +232,21 @@ CURRENT STORYBOARD DRAFT (HTML):
 ${currentHtml}
 
 CURRENT SCENE PARAMETERS:
-- Time: ${middleData.time || "Not specified"}
+- Timing: ${middleData.time || "Not specified"}
 - Location: ${middleData.location || "Not specified"}
 - Character(s): ${middleData.character || "Not specified"}
-- Key Items: ${middleData.items || "Not specified"}
 - Duration: ${middleData.duration || "Not specified"}
-- Special Vibe: ${middleData.vibe || "Not specified"}
+- Vibe / Atmosphere: ${middleData.vibe || "Not specified"}
 
 TASK:
 1. Carefully read the REFERENCE DOCUMENT and use it to improve or refine the CURRENT STORYBOARD DRAFT.
    - If it is a Character Sheet: update character names, traits, and roles throughout the storyboard.
    - If it is World Building: update location details, atmosphere, and setting descriptions.
-   - If it is Key Items: incorporate the items into relevant scenes naturally.
-   - If it is a Plot Outline: realign the scene flow and narrative arc to match.
+   - If it is a Plot Outline / Synopsis: realign the scene flow and narrative arc to match.
    - If it is a Timeline: adjust scene order and pacing to match the given timeline.
 2. Keep the overall HTML structure identical (using <h3>, <p>, <ul>).
 3. Output exactly TWO things separated by the delimiter "|||---|||":
-   - First part: A brief, friendly chat message summarising what you changed.
+   - First part: A brief, friendly chat message summarising what you changed. Write in ${language || 'English'}.
    - Second part: The fully updated storyboard HTML. Do not use markdown code block wrappers.
 
 Example:
@@ -213,6 +268,32 @@ I've applied your character sheet! I updated all character names and added backs
 
             if (!response.ok) {
                 const errorData = await response.json();
+
+                // ← Key debug logs
+                console.error("=== GEMINI API ERROR FULL DETAILS ===");
+                console.error("Status:", response.status);
+                console.error("Error JSON:", JSON.stringify(errorData, null, 2));
+
+                // Detect free tier specifically (works for 429)
+                if (response.status === 429) {
+                    const errorMsg = errorData.error?.message || '';
+                    const details = errorData.error?.details || [];
+
+                    const isLikelyFreeTier =
+                        errorMsg.toLowerCase().includes('free tier') ||
+                        details.some(d =>
+                            (d.metadata?.quota_metric || '').includes('free_tier') ||
+                            (d.metadata?.quota_limit || '').includes('free_tier') ||
+                            (d.metadata?.quota_limit_value === '0' && (d.metadata?.quota_metric || '').includes('free'))
+                        );
+
+                    if (isLikelyFreeTier) {
+                        console.warn("→ STRONG INDICATOR: This is FREE TIER quota exceeded (look for 'free_tier_requests' in quota_metric)");
+                    } else {
+                        console.warn("→ This looks like PAID TIER or different limit (no 'free_tier' metric found)");
+                    }
+                }
+
                 throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
             }
 
