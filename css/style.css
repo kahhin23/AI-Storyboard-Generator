@@ -1590,3 +1590,19 @@ input[type="number"] {
     display: flex;
     justify-content: flex-end;
 }
+
+/*Export Storyboard Format*/
+#storyboard-output,
+#storyboard-output * {
+    word-break: normal;           
+    overflow-wrap: normal;        
+    hyphens: none;                
+    line-break: strict;           
+}
+
+#storyboard-output p,
+#storyboard-output div,
+#storyboard-output li,
+#storyboard-output span {
+    word-break: keep-all !important;
+}
