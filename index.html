@@ -13,6 +13,7 @@
 
     <!-- Setup Firebase authentication as module, before regular app execution -->
     <script type="module" src="js/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turbodocx/html-to-docx@latest/dist/html-to-docx.umd.js"></script>
 </head>
 
 <body>
@@ -291,8 +292,8 @@
                 <!-- Content injected here -->
             </div>
             <div class="history-modal-footer">
-                <button class="btn primary" id="btn-export-history" onclick="app.downloadHistoryPDF()"><i
-                        class="fa-solid fa-file-pdf"></i> Export PDF</button>
+                <button class="btn primary" id="btn-export-history" onclick="app.downloadDOCX()"><i
+                        class="fa-solid fa-file-word"></i> Export DOCX</button>
             </div>
         </div>
     </div>

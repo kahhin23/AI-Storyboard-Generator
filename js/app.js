@@ -842,6 +842,43 @@ const app = {
         }
     },
 
+    async downloadDOCX() {
+        const element = document.getElementById('storyboard-output');
+        if (!element) return;
+    
+        const title = this.state.project.name || 'Storyboard';
+        const filename = `${title.replace(/\s+/g, '_')}_Storyboard.docx`;
+    
+        const htmlContent = element.innerHTML;
+    
+        try {
+            const docxBlob = await HTMLtoDOCX(
+                htmlContent, 
+                null,                   
+                {
+                    table: { row: { cantSplit: true } },
+                    paragraph: { spacing: { after: 200 } }, 
+                },
+                null                       
+            );
+    
+            const url = URL.createObjectURL(docxBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+    
+            this.addChatMessage('info', `✅ Exported as DOCX: ${filename}`);
+    
+        } catch (err) {
+            console.error("DOCX export failed:", err);
+            alert("Failed to export DOCX: " + err.message);
+        }
+    },
+
     openHistoryModal(storyboardData) {
         const titleEl = document.getElementById('history-modal-title');
         const bodyEl = document.getElementById('history-modal-body');

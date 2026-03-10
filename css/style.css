@@ -1594,7 +1594,8 @@ input[type="number"] {
 /*Export Storyboard Format*/
 #storyboard-output,
 #storyboard-output * {
-    word-break: normal;           
+    font-family: "Microsoft YaHei", "SimSun", "Noto Sans SC", sans-serif;
+    word-break: keep-all;           
     overflow-wrap: normal;        
     hyphens: none;                
     line-break: strict;           
