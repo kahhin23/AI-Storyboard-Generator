@@ -864,35 +864,44 @@ const app = {
     },
 
     async downloadDOCX() {
-        const element = document.getElementById('storyboard-output');
-        if (!element) return;
-    
-        const title = this.state.project.name || 'Storyboard';
-        const filename = `${title.replace(/\s+/g, '_')}_Storyboard.docx`;
-    
-        const htmlContent = element.innerHTML;
-    
         try {
-            const docxBlob = await window.HTMLToDocx(htmlContent, null, {
-                table: { row: { cantSplit: true } },
-                footer: true,
-                pageNumber: true,
+            const bodyEl = document.getElementById('history-modal-body');
+            const projectName = document.getElementById('history-modal-title').textContent;
+            const filename = `${projectName.replace(/\s+/g, '_')}_Storyboard.docx`;
+    
+            const doc = new docx.Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new docx.Paragraph({
+                            children: [
+                                new docx.TextRun({
+                                    text: projectName,
+                                    bold: true,
+                                    size: 48, // 24pt
+                                }),
+                            ],
+                            spacing: { after: 400 },
+                        }),
+                        ...Array.from(bodyEl.children).map(el => {
+                            return new docx.Paragraph({
+                                children: [new docx.TextRun(el.innerText)],
+                                spacing: { before: 200, after: 200 },
+                                heading: el.tagName === 'H3' ? docx.HeadingLevel.HEADING_2 : undefined
+                            });
+                        })
+                    ],
+                }],
             });
     
-            const url = URL.createObjectURL(docxBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const blob = await docx.Packer.toBlob(doc);
+            saveAs(blob, filename);
     
-            this.addChatMessage('info', `✅ Exported as DOCX: ${filename}`);
+            this.addChatMessage('info', `✅ Exported via docx.js: ${filename}`);
     
         } catch (err) {
-            console.error("DOCX export failed:", err);
-            alert("Failed to export DOCX: " + err.message);
+            console.error("New DOCX export failed:", err);
+            alert("Export Error: " + err.message);
         }
     },
 
