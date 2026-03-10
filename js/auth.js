@@ -7,6 +7,15 @@ import {
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    where,
+    orderBy
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyB1_ft77gPzGdEhASxFImlRFQsmMzgBVo0",
@@ -23,6 +32,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const analytics = getAnalytics(firebaseApp);
 const auth = getAuth(firebaseApp);
 const provider = new GoogleAuthProvider();
+const db = getFirestore(firebaseApp);
 
 // Expose minimal API to global state so app.js and HTML can use it
 window.firebaseAuthAPI = {
@@ -58,5 +68,40 @@ window.firebaseAuthAPI = {
                 onLogout();
             }
         });
+    },
+    saveStoryboard: async (userId, projectData, storyboardHtml) => {
+        try {
+            const docRef = await addDoc(collection(db, "storyboards"), {
+                userId: userId,
+                projectName: projectData.name,
+                projectType: projectData.type,
+                projectGenre: projectData.genre,
+                projectLanguage: projectData.language,
+                htmlContent: storyboardHtml,
+                createdAt: new Date()
+            });
+            console.log("Storyboard saved with ID: ", docRef.id);
+            return docRef.id;
+        } catch (e) {
+            console.error("Error saving storyboard: ", e);
+            throw e;
+        }
+    },
+    getUserStoryboards: async (userId) => {
+        try {
+            const q = query(collection(db, "storyboards"),
+                where("userId", "==", userId),
+                orderBy("createdAt", "desc"));
+            const querySnapshot = await getDocs(q);
+
+            const storyboards = [];
+            querySnapshot.forEach((doc) => {
+                storyboards.push({ id: doc.id, ...doc.data() });
+            });
+            return storyboards;
+        } catch (e) {
+            console.error("Error fetching storyboards: ", e);
+            throw e;
+        }
     }
 };

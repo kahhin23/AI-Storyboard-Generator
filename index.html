@@ -32,6 +32,20 @@
         </div>
     </div>
 
+    <!-- History Sidebar -->
+    <aside id="history-sidebar" class="history-sidebar">
+        <button id="btn-toggle-history" class="btn-toggle-history" title="Toggle History">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+        </button>
+        <div class="history-content">
+            <h3 class="history-title">Saved Storyboards</h3>
+            <div id="history-list" class="history-list">
+                <!-- History Items will be populated here -->
+                <p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>
+            </div>
+        </div>
+    </aside>
+
     <div class="glass-background"></div>
     <div class="particles" id="particles"></div>
 
@@ -256,7 +270,7 @@
                         </div>
                     </div>
                     <div class="editor-bottom-action">
-                        <button class="btn green" id="btn-save" onclick="app.downloadPDF()">Export</button>
+                        <button class="btn green" id="btn-save" onclick="app.saveStoryboard()">Save to History</button>
                         <button class="btn secondary" onclick="app.resetFlow()">Start New</button>
                     </div>
                 </div>
@@ -265,6 +279,23 @@
         </section>
 
     </main>
+
+    <!-- History Modal Popup -->
+    <div id="history-modal" class="history-modal-overlay hidden">
+        <div class="history-modal-content">
+            <div class="history-modal-header">
+                <h3 id="history-modal-title">Storyboard Title</h3>
+                <button id="btn-close-modal" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="history-modal-body" id="history-modal-body">
+                <!-- Content injected here -->
+            </div>
+            <div class="history-modal-footer">
+                <button class="btn primary" id="btn-export-history" onclick="app.downloadHistoryPDF()"><i
+                        class="fa-solid fa-file-pdf"></i> Export PDF</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

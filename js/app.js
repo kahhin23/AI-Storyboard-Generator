@@ -112,7 +112,12 @@ const app = {
 
                         // Update UI
                         document.getElementById('user-profile-dropdown').style.display = 'block';
-                        document.getElementById('user-name').textContent = user.displayName;
+                        const nameSpan = document.getElementById('user-name');
+                        if (nameSpan) nameSpan.textContent = user.displayName;
+
+                        // Load History
+                        this.loadHistory();
+
                         // Navigate to home if currently on login
                         if (this.state.currentScreen === 'login') {
                             this.navigateTo('home');
@@ -124,7 +129,11 @@ const app = {
 
                         // Hide UI
                         document.getElementById('user-profile-dropdown').style.display = 'none';
-                        document.getElementById('profile-menu').style.display = 'none';
+                        const profileMenu = document.getElementById('profile-menu');
+                        if (profileMenu) profileMenu.style.display = 'none';
+
+                        // Clear History
+                        document.getElementById('history-list').innerHTML = '<p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>';
 
                         // Navigate to login
                         if (this.state.currentScreen !== 'login') {
@@ -149,10 +158,24 @@ const app = {
             const profileMenu = document.getElementById('profile-menu');
             const btnProfile = document.getElementById('btn-profile');
             // If the menu is open and we click outside of it and its button
-            if (profileMenu.style.display === 'flex' && !profileMenu.contains(e.target) && !btnProfile.contains(e.target)) {
+            if (profileMenu && profileMenu.style.display === 'flex' && !profileMenu.contains(e.target) && !btnProfile.contains(e.target)) {
                 profileMenu.style.display = 'none';
             }
         });
+
+        // History Sidebar Toggle
+        const toggleHistoryBtn = document.getElementById('btn-toggle-history');
+        if (toggleHistoryBtn) {
+            toggleHistoryBtn.addEventListener('click', () => {
+                document.getElementById('history-sidebar').classList.toggle('open');
+            });
+        }
+
+        // Close Modal
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        if (btnCloseModal) {
+            btnCloseModal.addEventListener('click', () => this.closeHistoryModal());
+        }
 
         // Home Screen
         document.getElementById('btn-create-project').addEventListener('click', () => {
@@ -704,28 +727,134 @@ const app = {
     },
 
     downloadPDF() {
-        // Find the AI output div that holds the storyboard
-        const element = document.getElementById('storyboard-output');
+        // Only used for the active editor Export (if needed)
+        this._executeDownload('storyboard-output', this.state.project.name);
+    },
+
+    downloadHistoryPDF() {
+        // Used for exporting the history modal content
+        const title = document.getElementById('history-modal-title').textContent;
+        this._executeDownload('history-modal-body', title);
+    },
+
+    _executeDownload(elementId, projectName) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
         const opt = {
             margin: 15,
-            filename: `${this.state.project.name.replace(/\s+/g, '_') || 'Draft'}_Storyboard.pdf`,
+            filename: `${(projectName || 'Draft').replace(/\\s+/g, '_')}_Storyboard.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // Temporarily change text color for PDF readability
+        const originalColor = element.style.color;
         element.style.color = 'black';
 
         html2pdf().set(opt).from(element).save().then(() => {
-            // Restore text color
-            element.style.color = '';
-
-            // Add chat log event for download
+            element.style.color = originalColor;
             const chatMessages = document.getElementById('chat-messages');
-            chatMessages.innerHTML += `<div style="color:#FFB300; font-size:0.9rem;">-> Saved Storyboard PDF successfully!</div>`;
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            if (chatMessages && elementId === 'storyboard-output') {
+                chatMessages.innerHTML += `<div style="color:#FFB300; font-size:0.9rem;">-> Exported Storyboard PDF!</div>`;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
         });
+    },
+
+    async saveStoryboard() {
+        if (!this.state.user) {
+            alert("You must be logged in to save storyboards.");
+            return;
+        }
+
+        const htmlContent = document.getElementById('storyboard-output').innerHTML;
+        if (!htmlContent || htmlContent.trim() === '') {
+            alert("Nothing to save!");
+            return;
+        }
+
+        const btnSave = document.getElementById('btn-save');
+        const originalText = btnSave.innerHTML;
+        btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        btnSave.disabled = true;
+
+        try {
+            await window.firebaseAuthAPI.saveStoryboard(this.state.user.uid, this.state.project, htmlContent);
+
+            // Reload history to show new item
+            await this.loadHistory();
+
+            // Show success in UI and Chat
+            btnSave.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+            btnSave.classList.replace('green', 'primary');
+            this.addChatMessage('info', '✅ Storyboard successfully saved to your History.');
+
+            setTimeout(() => {
+                btnSave.innerHTML = originalText;
+                btnSave.disabled = false;
+                btnSave.classList.replace('primary', 'green');
+            }, 3000);
+
+        } catch (error) {
+            btnSave.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error';
+            btnSave.disabled = false;
+            setTimeout(() => btnSave.innerHTML = originalText, 3000);
+            alert("Failed to save storyboard: " + error.message);
+        }
+    },
+
+    async loadHistory() {
+        if (!this.state.user) return;
+
+        try {
+            const listContainer = document.getElementById('history-list');
+            const storyboards = await window.firebaseAuthAPI.getUserStoryboards(this.state.user.uid);
+
+            if (storyboards.length === 0) {
+                listContainer.innerHTML = '<p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = ''; // Clear current list
+
+            storyboards.forEach(sb => {
+                const date = sb.createdAt && sb.createdAt.toDate ? sb.createdAt.toDate().toLocaleDateString() : 'Unknown date';
+                const el = document.createElement('div');
+                el.className = 'history-item';
+                el.innerHTML = `
+                    <h4>${sb.projectName || 'Untitled'}</h4>
+                    <p>${sb.projectGenre || 'Various'} • ${sb.projectLanguage || 'EN'}</p>
+                    <p style="font-size:0.7rem; margin-top:4px; opacity:0.6;"><i class="fa-regular fa-calendar"></i> ${date}</p>
+                `;
+
+                // Add click listener to open modal with this content
+                el.addEventListener('click', () => {
+                    this.openHistoryModal(sb);
+                });
+
+                listContainer.appendChild(el);
+            });
+
+        } catch (error) {
+            console.error("Failed to load history UI: ", error);
+        }
+    },
+
+    openHistoryModal(storyboardData) {
+        const titleEl = document.getElementById('history-modal-title');
+        const bodyEl = document.getElementById('history-modal-body');
+        const modal = document.getElementById('history-modal');
+
+        titleEl.textContent = storyboardData.projectName || 'Storyboard';
+        bodyEl.innerHTML = storyboardData.htmlContent;
+
+        modal.classList.remove('hidden');
+    },
+
+    closeHistoryModal() {
+        document.getElementById('history-modal').classList.add('hidden');
+        document.getElementById('history-modal-body').innerHTML = '';
     }
 };
 
