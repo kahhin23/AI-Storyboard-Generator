@@ -905,6 +905,52 @@ const app = {
         }
     },
 
+    downloadTXT() {
+        try {
+            const bodyEl = document.getElementById('history-modal-body');
+            const projectName = document.getElementById('history-modal-title').textContent;
+            const filename = `${projectName.replace(/\s+/g, '_')}_Storyboard.txt`;
+    
+            // 1. Convert HTML to formatted plain text
+            let plainText = `STORYBOARD: ${projectName.toUpperCase()}\n`;
+            plainText += `Generated on: ${new Date().toLocaleString()}\n`;
+            plainText += `==========================================\n\n`;
+    
+            // Loop through the elements to preserve structure
+            const elements = bodyEl.querySelectorAll('h3, p, li');
+            elements.forEach(el => {
+                if (el.tagName === 'H3') {
+                    plainText += `\n[SCENE: ${el.innerText.toUpperCase()}]\n`;
+                    plainText += `------------------------------------------\n`;
+                } else if (el.tagName === 'LI') {
+                    plainText += ` • ${el.innerText}\n`;
+                } else {
+                    plainText += `${el.innerText}\n`;
+                }
+            });
+    
+            // 2. Create the Blob and trigger download
+            const blob = new Blob([plainText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Cleanup
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+    
+            this.addChatMessage('info', `✅ Exported as Text: ${filename}`);
+    
+        } catch (err) {
+            console.error("Text export failed:", err);
+            alert("Failed to export Text file.");
+        }
+    },
+
     openHistoryModal(storyboardData) {
         const titleEl = document.getElementById('history-modal-title');
         const bodyEl = document.getElementById('history-modal-body');

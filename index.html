@@ -12,8 +12,7 @@
     <link rel="stylesheet" href="css/style.css">
 
     <!-- Setup Firebase authentication as module, before regular app execution -->
-    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turbodocx/html-to-docx@latest/dist/html-to-docx.browser.js"></script>
     <script type="module" src="js/auth.js"></script>
 </head>
 
@@ -293,8 +292,9 @@
                 <!-- Content injected here -->
             </div>
             <div class="history-modal-footer">
-                <button class="btn primary" id="btn-export-history" onclick="app.downloadDOCX()"><i
-                        class="fa-solid fa-file-word"></i> Export DOCX</button>
+                <button class="btn primary" id="btn-export-history" onclick="app.downloadTXT()">
+                    <i class="fa-solid fa-file-lines"></i> Export Text
+                </button>
             </div>
         </div>
     </div>
