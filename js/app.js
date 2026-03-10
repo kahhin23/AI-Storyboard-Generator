@@ -2,6 +2,7 @@
 
 const app = {
     state: {
+        user: null, // Tracks authenticated user
         project: {
             name: '',
             description: '',
@@ -10,7 +11,7 @@ const app = {
             genre: '',
             language: ''
         },
-        currentScreen: 'home'
+        currentScreen: 'login' // Changed initial screen to login
     },
 
     genres: [
@@ -67,9 +68,92 @@ const app = {
         this.populateGenres();
         this.populateLanguages();
         this.initParticles();
+        this.setupAuthentication();
+    },
+
+    setupAuthentication() {
+        // Handle Google Login Button Click
+        const loginBtn = document.getElementById('btn-google-login');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', async () => {
+                if (window.firebaseAuthAPI) {
+                    try {
+                        await window.firebaseAuthAPI.signIn();
+                        // State observer will handle the transition
+                    } catch (e) {
+                        // Error handled in auth.js
+                    }
+                } else {
+                    alert("Authentication module is still loading...");
+                }
+            });
+        }
+
+        // Handle Logout Button
+        const logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                if (window.firebaseAuthAPI) {
+                    await window.firebaseAuthAPI.signOut();
+                }
+            });
+        }
+
+        // Wait for Firebase to initialize before setting up observer
+        const checkAuthReady = setInterval(() => {
+            if (window.firebaseAuthAPI) {
+                clearInterval(checkAuthReady);
+
+                // Initialize observer
+                window.firebaseAuthAPI.initAuthObserver(
+                    // On Login Function
+                    (user) => {
+                        this.state.user = user;
+
+                        // Update UI
+                        document.getElementById('user-profile-dropdown').style.display = 'block';
+                        document.getElementById('user-name').textContent = user.displayName;
+                        // Navigate to home if currently on login
+                        if (this.state.currentScreen === 'login') {
+                            this.navigateTo('home');
+                        }
+                    },
+                    // On Logout Function
+                    () => {
+                        this.state.user = null;
+
+                        // Hide UI
+                        document.getElementById('user-profile-dropdown').style.display = 'none';
+                        document.getElementById('profile-menu').style.display = 'none';
+
+                        // Navigate to login
+                        if (this.state.currentScreen !== 'login') {
+                            this.resetFlow(true); // Forced reset on logout
+                        }
+                    }
+                );
+            }
+        }, 100);
     },
 
     bindEvents() {
+        // Profile Dropdown functionality
+        document.getElementById('btn-profile').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const profileMenu = document.getElementById('profile-menu');
+            profileMenu.style.display = (profileMenu.style.display === 'none' || profileMenu.style.display === '') ? 'flex' : 'none';
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const profileMenu = document.getElementById('profile-menu');
+            const btnProfile = document.getElementById('btn-profile');
+            // If the menu is open and we click outside of it and its button
+            if (profileMenu.style.display === 'flex' && !profileMenu.contains(e.target) && !btnProfile.contains(e.target)) {
+                profileMenu.style.display = 'none';
+            }
+        });
+
         // Home Screen
         document.getElementById('btn-create-project').addEventListener('click', () => {
             const name = document.getElementById('project-name').value.trim();
@@ -493,7 +577,7 @@ const app = {
         </div>`;
     },
 
-    resetFlow() {
+    _resetFormState() {
         this.state.project = {
             name: '',
             description: '',
@@ -512,8 +596,6 @@ const app = {
         document.getElementById('editor-character').value = '';
         document.getElementById('editor-length').value = '';
         document.getElementById('editor-vibe').value = '';
-
-        // Reset loading screen UI just in case
         document.querySelector('.generating-container').innerHTML = `
             <div class="ai-orb"></div>
             <h2 class="gradient-text pulse-text">Generating your storyboard...</h2>
@@ -528,8 +610,15 @@ const app = {
         // Clear Chat & Output
         document.getElementById('chat-messages').innerHTML = '';
         document.getElementById('storyboard-output').innerHTML = '';
+    },
 
-        this.navigateTo('home');
+    resetFlow(forceLogout = false) {
+        this._resetFormState();
+        if (forceLogout || !this.state.user) {
+            this.navigateTo('login');
+        } else {
+            this.navigateTo('home');
+        }
     },
 
     showError(elementId, message) {
