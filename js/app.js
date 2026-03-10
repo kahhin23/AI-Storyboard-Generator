@@ -873,7 +873,7 @@ const app = {
         const htmlContent = element.innerHTML;
     
         try {
-            const docxBlob = await htmlToDocx(
+            const docxBlob = await window.htmlToDocx(
                 htmlContent, 
                 null,                   
                 {
