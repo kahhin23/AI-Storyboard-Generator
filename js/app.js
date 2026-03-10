@@ -1,4 +1,25 @@
 // js/app.js
+if (typeof window.global === 'undefined') window.global = window;
+if (typeof window.process === 'undefined') window.process = { env: {} };
+if (typeof window.Buffer === 'undefined') {
+    window.Buffer = {
+        from: function(data, encoding) {
+            if (typeof data === 'string') {
+                if (encoding === 'base64') {
+                    const binary = atob(data);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    return bytes;
+                }
+                return new TextEncoder().encode(data);
+            }
+            return new Uint8Array(data);
+        },
+        isBuffer: () => false
+    };
+}
 
 const app = {
     state: {
@@ -858,6 +879,9 @@ const app = {
                 {
                     table: { row: { cantSplit: true } },
                     paragraph: { spacing: { after: 200 } }, 
+                    font: {
+                        default: 'Microsoft YaHei, SimSun, "Noto Sans SC", sans-serif'
+                    }
                 },
                 null                       
             );
