@@ -873,18 +873,11 @@ const app = {
         const htmlContent = element.innerHTML;
     
         try {
-            const docxBlob = await window.htmlToDocx(
-                htmlContent, 
-                null,                   
-                {
-                    table: { row: { cantSplit: true } },
-                    paragraph: { spacing: { after: 200 } }, 
-                    font: {
-                        default: 'Microsoft YaHei, SimSun, "Noto Sans SC", sans-serif'
-                    }
-                },
-                null                       
-            );
+            const docxBlob = await window.HTMLToDocx(htmlContent, null, {
+                table: { row: { cantSplit: true } },
+                footer: true,
+                pageNumber: true,
+            });
     
             const url = URL.createObjectURL(docxBlob);
             const a = document.createElement('a');
