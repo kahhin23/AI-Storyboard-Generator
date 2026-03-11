@@ -3,7 +3,7 @@ if (typeof window.global === 'undefined') window.global = window;
 if (typeof window.process === 'undefined') window.process = { env: {} };
 if (typeof window.Buffer === 'undefined') {
     window.Buffer = {
-        from: function(data, encoding) {
+        from: function (data, encoding) {
             if (typeof data === 'string') {
                 if (encoding === 'base64') {
                     const binary = atob(data);
@@ -23,7 +23,7 @@ if (typeof window.Buffer === 'undefined') {
 
 const app = {
     state: {
-        user: null, // Tracks authenticated user
+        user: null,
         isGuest: false,
         guestHistory: [], // In-memory only; disappears on refresh
         characters: [], // In-memory mirror of loaded characters
@@ -885,7 +885,7 @@ const app = {
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css'], avoid: ['tr', 'td', 'p', 'div', 'li', '.scene-container']}
+            pagebreak: { mode: ['avoid-all', 'css'], avoid: ['tr', 'td', 'p', 'div', 'li', '.scene-container'] }
         };
 
         const originalColor = element.style.color;
@@ -1031,7 +1031,7 @@ const app = {
             const bodyEl = document.getElementById('history-modal-body');
             const projectName = document.getElementById('history-modal-title').textContent;
             const filename = `${projectName.replace(/\s+/g, '_')}_Storyboard.docx`;
-    
+
             const doc = new docx.Document({
                 sections: [{
                     properties: {},
@@ -1056,12 +1056,12 @@ const app = {
                     ],
                 }],
             });
-    
+
             const blob = await docx.Packer.toBlob(doc);
             saveAs(blob, filename);
-    
+
             this.addChatMessage('info', `✅ Exported via docx.js: ${filename}`);
-    
+
         } catch (err) {
             console.error("New DOCX export failed:", err);
             alert("Export Error: " + err.message);
@@ -1073,12 +1073,12 @@ const app = {
             const bodyEl = document.getElementById('history-modal-body');
             const projectName = document.getElementById('history-modal-title').textContent;
             const filename = `${projectName.replace(/\s+/g, '_')}_Storyboard.txt`;
-    
+
             // 1. Convert HTML to formatted plain text
             let plainText = `STORYBOARD: ${projectName.toUpperCase()}\n`;
             plainText += `Generated on: ${new Date().toLocaleString()}\n`;
             plainText += `==========================================\n\n`;
-    
+
             // Loop through the elements to preserve structure
             const elements = bodyEl.querySelectorAll('h3, p, li');
             elements.forEach(el => {
@@ -1091,23 +1091,23 @@ const app = {
                     plainText += `${el.innerText}\n`;
                 }
             });
-    
+
             // 2. Create the Blob and trigger download
             const blob = new Blob([plainText], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
-            
+
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
             document.body.appendChild(a);
             a.click();
-            
+
             // Cleanup
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-    
+
             this.addChatMessage('info', `✅ Exported as Text: ${filename}`);
-    
+
         } catch (err) {
             console.error("Text export failed:", err);
             alert("Failed to export Text file.");
