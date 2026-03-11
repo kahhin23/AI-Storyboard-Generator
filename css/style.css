@@ -595,6 +595,28 @@ input[type="number"] {
     border-radius: 20px;
 }
 
+.guest-btn {
+    width: 100%;
+    margin-top: 1.25rem;
+    border-radius: 30px;
+    padding: 1.05rem;
+}
+
+.guest-btn i {
+    color: var(--text-secondary);
+}
+
+.guest-btn:hover i {
+    color: white;
+}
+
+.auth-note {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    opacity: 0.9;
+}
+
 .btn-chip:hover {
     color: white;
     border-color: var(--accent-secondary);

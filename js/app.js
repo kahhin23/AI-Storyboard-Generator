@@ -24,6 +24,8 @@ if (typeof window.Buffer === 'undefined') {
 const app = {
     state: {
         user: null, // Tracks authenticated user
+        isGuest: false,
+        guestHistory: [], // In-memory only; disappears on refresh
         project: {
             name: '',
             description: '',
@@ -97,6 +99,13 @@ const app = {
         const loginBtn = document.getElementById('btn-google-login');
         if (loginBtn) {
             loginBtn.addEventListener('click', async () => {
+                // If currently in guest mode, exit it before authenticating with Firebase
+                if (this.state.isGuest) {
+                    this.state.isGuest = false;
+                    this.state.user = null;
+                    this.state.guestHistory = [];
+                    document.getElementById('user-profile-dropdown').style.display = 'none';
+                }
                 if (window.firebaseAuthAPI) {
                     try {
                         await window.firebaseAuthAPI.signIn();
@@ -110,10 +119,22 @@ const app = {
             });
         }
 
+        // Handle Guest Login Button Click
+        const guestBtn = document.getElementById('btn-guest-login');
+        if (guestBtn) {
+            guestBtn.addEventListener('click', () => {
+                this.enterGuestMode();
+            });
+        }
+
         // Handle Logout Button
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
+                if (this.state.isGuest) {
+                    this.exitGuestMode();
+                    return;
+                }
                 if (window.firebaseAuthAPI) {
                     await window.firebaseAuthAPI.signOut();
                 }
@@ -129,12 +150,17 @@ const app = {
                 window.firebaseAuthAPI.initAuthObserver(
                     // On Login Function
                     (user) => {
+                        // If user previously chose guest mode, ignore Firebase auth changes
+                        if (this.state.isGuest) return;
                         this.state.user = user;
+                        this.state.isGuest = false;
 
                         // Update UI
                         document.getElementById('user-profile-dropdown').style.display = 'block';
                         const nameSpan = document.getElementById('user-name');
                         if (nameSpan) nameSpan.textContent = user.displayName;
+                        const logoutLabel = document.querySelector('#btn-logout');
+                        if (logoutLabel) logoutLabel.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sign Out';
 
                         // Load History
                         this.loadHistory();
@@ -146,6 +172,8 @@ const app = {
                     },
                     // On Logout Function
                     () => {
+                        // If in guest mode, don't let Firebase observer kick you back to login.
+                        if (this.state.isGuest) return;
                         this.state.user = null;
 
                         // Hide UI
@@ -164,6 +192,44 @@ const app = {
                 );
             }
         }, 100);
+    },
+
+    enterGuestMode() {
+        this.state.isGuest = true;
+        this.state.user = { displayName: 'Guest', isGuest: true };
+        this.state.guestHistory = [];
+
+        // Update UI to look "logged in"
+        document.getElementById('user-profile-dropdown').style.display = 'block';
+        const nameSpan = document.getElementById('user-name');
+        if (nameSpan) nameSpan.textContent = 'Guest';
+        const logoutLabel = document.querySelector('#btn-logout');
+        if (logoutLabel) logoutLabel.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Exit Guest';
+
+        // Clear/initialize local history UI
+        this.loadHistory();
+
+        if (this.state.currentScreen === 'login') {
+            this.navigateTo('home');
+        }
+    },
+
+    exitGuestMode() {
+        this.state.isGuest = false;
+        this.state.user = null;
+        this.state.guestHistory = [];
+
+        // Hide profile UI
+        document.getElementById('user-profile-dropdown').style.display = 'none';
+        const profileMenu = document.getElementById('profile-menu');
+        if (profileMenu) profileMenu.style.display = 'none';
+
+        // Clear history UI
+        document.getElementById('history-list').innerHTML = '<p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>';
+
+        if (this.state.currentScreen !== 'login') {
+            this.resetFlow(true);
+        }
     },
 
     bindEvents() {
@@ -796,6 +862,24 @@ const app = {
             return;
         }
 
+        // Guest mode: store in-memory only (no Firebase)
+        if (this.state.isGuest) {
+            const item = {
+                id: 'guest-' + Date.now(),
+                userId: 'guest',
+                projectName: this.state.project.name || 'Untitled',
+                projectType: this.state.project.type,
+                projectGenre: this.state.project.genre,
+                projectLanguage: this.state.project.language,
+                htmlContent,
+                createdAt: new Date()
+            };
+            this.state.guestHistory.unshift(item);
+            await this.loadHistory();
+            this.addChatMessage('info', 'Saved to session History (guest mode). This will disappear on refresh.');
+            return;
+        }
+
         const btnSave = document.getElementById('btn-save');
         const originalText = btnSave.innerHTML;
         btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
@@ -828,6 +912,34 @@ const app = {
 
     async loadHistory() {
         if (!this.state.user) return;
+
+        // Guest mode: render in-memory list only
+        if (this.state.isGuest) {
+            const listContainer = document.getElementById('history-list');
+            const storyboards = this.state.guestHistory || [];
+
+            if (storyboards.length === 0) {
+                listContainer.innerHTML = '<p class="history-empty" id="history-emptyMsg">No session storyboards yet.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            storyboards.forEach(sb => {
+                const date = sb.createdAt instanceof Date ? sb.createdAt.toLocaleDateString() : 'Unknown date';
+                const el = document.createElement('div');
+                el.className = 'history-item';
+                el.innerHTML = `
+                    <h4>${sb.projectName || 'Untitled'}</h4>
+                    <p>${sb.projectGenre || 'Various'} • ${sb.projectLanguage || 'EN'}</p>
+                    <p style="font-size:0.7rem; margin-top:4px; opacity:0.6;"><i class="fa-regular fa-calendar"></i> ${date}</p>
+                `;
+                el.addEventListener('click', () => {
+                    this.openHistoryModal(sb);
+                });
+                listContainer.appendChild(el);
+            });
+            return;
+        }
 
         try {
             const listContainer = document.getElementById('history-list');
