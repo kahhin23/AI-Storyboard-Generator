@@ -103,13 +103,24 @@ Make it inspiring and ready for the user to edit directly in the browser. Do not
         }
     },
 
-    async modifyStoryboard(currentHtml, middleData, userMessage, language) {
+    async modifyStoryboard(currentHtml, middleData, userMessage, projectData) {
+        const language = projectData?.language;
         const langInstruction = language ? `IMPORTANT: Write ALL your response content in ${language}. This includes the storyboard HTML and your chat reply.` : '';
+        const projectContext = projectData ? `
+PROJECT CONTEXT (User selections):
+- Project Name: ${projectData.name || "Not specified"}
+- Type: ${projectData.type || "Not specified"}
+- Duration: ${projectData.duration || "Not specified"}
+- Genre/Mood: ${projectData.genre || "Not specified"}
+- Output Language: ${projectData.language || "English"}
+` : '';
         // Construct a prompt that includes the current storyboard, the data in the middle column, and the user's instructions
         const prompt = `
 You are a professional storyboard artist and film director. 
 You are collaborating with a user to refine a storyboard draft. 
 ${langInstruction}
+
+${projectContext}
 
 CURRENT STORYBOARD DRAFT (HTML):
 ${currentHtml}
@@ -215,12 +226,23 @@ Sure! I have updated the scene to include the magical sword in the forest. You w
         }
     },
 
-    async ingestFileContext(label, fileText, currentHtml, middleData, language) {
+    async ingestFileContext(label, fileText, currentHtml, middleData, projectData) {
+        const language = projectData?.language;
         const langInstruction = language ? `IMPORTANT: Write ALL your response content in ${language}. This includes the updated storyboard HTML and your chat reply.` : '';
+        const projectContext = projectData ? `
+PROJECT CONTEXT (User selections):
+- Project Name: ${projectData.name || "Not specified"}
+- Type: ${projectData.type || "Not specified"}
+- Duration: ${projectData.duration || "Not specified"}
+- Genre/Mood: ${projectData.genre || "Not specified"}
+- Output Language: ${projectData.language || "English"}
+` : '';
         const prompt = `
 You are a professional storyboard artist and film director.
 You are collaborating with a user to refine a storyboard. The user has just uploaded a reference document.
 ${langInstruction}
+
+${projectContext}
 
 REFERENCE DOCUMENT TYPE: ${label}
 REFERENCE DOCUMENT CONTENT:

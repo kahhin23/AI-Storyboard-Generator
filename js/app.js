@@ -89,11 +89,54 @@ const app = {
     ],
 
     init() {
+        this.restoreProjectState();
         this.bindEvents();
         this.populateGenres();
         this.populateLanguages();
         this.initParticles();
         this.setupAuthentication();
+    },
+
+    persistProjectState() {
+        try {
+            const payload = {
+                name: this.state.project.name || '',
+                description: this.state.project.description || '',
+                type: this.state.project.type || '',
+                duration: this.state.project.duration || '',
+                genre: this.state.project.genre || '',
+                language: this.state.project.language || ''
+            };
+            localStorage.setItem('aiStoryboard.project', JSON.stringify(payload));
+        } catch (e) {
+            // ignore
+        }
+    },
+
+    restoreProjectState() {
+        try {
+            const raw = localStorage.getItem('aiStoryboard.project');
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (!data || typeof data !== 'object') return;
+
+            this.state.project = {
+                ...this.state.project,
+                name: data.name || this.state.project.name,
+                description: data.description || this.state.project.description,
+                type: data.type || this.state.project.type,
+                duration: data.duration || this.state.project.duration,
+                genre: data.genre || this.state.project.genre,
+                language: data.language || this.state.project.language
+            };
+
+            const nameEl = document.getElementById('project-name');
+            if (nameEl && this.state.project.name) nameEl.value = this.state.project.name;
+            const descEl = document.getElementById('project-description');
+            if (descEl && this.state.project.description) descEl.value = this.state.project.description;
+        } catch (e) {
+            // ignore
+        }
     },
 
     setupAuthentication() {
@@ -293,6 +336,7 @@ const app = {
 
             this.state.project.name = name;
             this.state.project.description = desc;
+            this.persistProjectState();
             this.navigateTo('type');
         });
 
@@ -327,6 +371,7 @@ const app = {
                 this.state.project.duration = `${val} minutes`;
             }
 
+            this.persistProjectState();
             this.navigateTo('genre');
         });
 
@@ -372,7 +417,7 @@ const app = {
             const currentHtml = document.getElementById('storyboard-output').innerHTML;
 
             try {
-                const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData, this.state.project.language);
+                const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData, this.state.project);
 
                 document.getElementById(loadingId)?.remove();
                 this.addChatMessage('ai', response.chatReply);
@@ -416,7 +461,7 @@ const app = {
 
                     // 4. Call Gemini modify function
                     try {
-                        const response = await geminiAPI.modifyStoryboard(currentHtml, middleData, val, this.state.project.language);
+                        const response = await geminiAPI.modifyStoryboard(currentHtml, middleData, val, this.state.project);
 
                         // Remove loading
                         const loadingMessage = document.getElementById(loadingId);
@@ -510,6 +555,7 @@ const app = {
 
     selectType(type) {
         this.state.project.type = type;
+        this.persistProjectState();
         this.navigateTo('duration');
         // Setup the duration screen after a short delay to let the screen appear
         setTimeout(() => this.setupDurationScreen(type), 420);
@@ -573,11 +619,13 @@ const app = {
 
     selectGenre(genre) {
         this.state.project.genre = genre;
+        this.persistProjectState();
         this.navigateTo('language');
     },
 
     selectLanguage(language) {
         this.state.project.language = language;
+        this.persistProjectState();
         this.startGeneration();
     },
 
@@ -649,11 +697,6 @@ const app = {
     populateEditor(storyboardData) {
         const output = document.getElementById('storyboard-output');
 
-        if (!storyboardData) {
-            output.innerHTML = '<p class="error-message">Could not generate the storyboard. Please try again.</p>';
-            return;
-        }
-
         // Populate Middle Column Fields — start blank
         document.getElementById('editor-length').value = '';
         document.getElementById('editor-vibe').value = '';
@@ -661,11 +704,8 @@ const app = {
         document.getElementById('editor-location').value = '';
         document.getElementById('editor-character').value = '';
 
-        // Populate Right Column (AI Output format is raw HTML)
-        this.renderStoryboard(storyboardData);
-
-        // Initialize Chat Room
-        this.addChatMessage('ai', `Welcome to the Editor! I have prepared a draft based on '${this.state.project.name}'. Feel free to edit the text on the right directly, or ask me to make changes.`);
+        // Keep AI Output blank when entering the editor.
+        if (output) output.innerHTML = '';
     },
 
     renderStoryboard(html) {
