@@ -220,7 +220,7 @@
                 <button class="btn nav-btn yellow" data-label="Synopsis"
                     onclick="app.triggerFileUpload(this)">Synopsis</button>
                 <button class="btn nav-btn yellow" data-label="Characters"
-                    onclick="app.triggerFileUpload(this)">Characters</button>
+                    onclick="app.openCharactersModal()">Characters</button>
                 <button class="btn nav-btn yellow" data-label="World Building"
                     onclick="app.triggerFileUpload(this)">World Building</button>
                 <button class="btn nav-btn yellow" data-label="Timeline"
@@ -300,6 +300,73 @@
                 <button class="btn primary" id="btn-export-history" onclick="app.downloadTXT()">
                     <i class="fa-solid fa-file-lines"></i> Export Text
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Characters Modal Popup -->
+    <div id="characters-modal" class="characters-modal-overlay hidden">
+        <div class="characters-modal-content">
+            <div class="characters-modal-header">
+                <h3>Characters</h3>
+                <button class="btn-close-modal" onclick="app.closeCharactersModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="characters-modal-body">
+                <div class="characters-pane characters-pane--left">
+                    <div class="characters-left-header">
+                        <div class="characters-left-title">Character List</div>
+                        <button class="btn secondary characters-add-btn" onclick="app.addNewCharacter()">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                    <div id="characters-list" class="characters-list">
+                        <p class="history-empty" id="characters-emptyMsg">No characters yet.</p>
+                    </div>
+                </div>
+                <div class="characters-pane characters-pane--right">
+                    <div id="characters-detail-placeholder" class="characters-detail-placeholder">
+                        <div class="characters-detail-placeholder__icon"><i class="fa-solid fa-user"></i></div>
+                        <div class="characters-detail-placeholder__title">No character selected</div>
+                        <div class="characters-detail-placeholder__desc">Click <strong>Add</strong> to create one, or select a character from the list.</div>
+                    </div>
+
+                    <div id="characters-form-wrapper" class="characters-form hidden">
+                        <div class="input-group">
+                            <label for="char-name">Name</label>
+                            <input type="text" id="char-name" placeholder="e.g. Alex Tan" autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <label for="char-sex">Sex</label>
+                            <input type="text" id="char-sex" placeholder="e.g. Female / Male / Non-binary" autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <label for="char-age">Age</label>
+                            <input type="text" id="char-age" placeholder="e.g. 28" autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <label for="char-traits">Character Traits</label>
+                            <textarea id="char-traits" rows="3" placeholder="e.g. Brave, impulsive, loyal..."></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label for="char-background">Background</label>
+                            <textarea id="char-background" rows="4" placeholder="Backstory, key events, motivations..."></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label for="char-position">Position in the Show</label>
+                            <input type="text" id="char-position" placeholder="e.g. Protagonist / Antagonist / Supporting" autocomplete="off">
+                        </div>
+
+                        <div class="characters-actions">
+                            <button class="btn primary" id="btn-character-save" onclick="app.saveCharacterFromModal()">
+                                <i class="fa-solid fa-floppy-disk"></i> Save
+                            </button>
+                            <button class="btn secondary" id="btn-character-delete" onclick="app.deleteCharacterFromModal()">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        <p class="auth-note" id="characters-mode-note" style="margin-top:0.75rem; text-align:left;"></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

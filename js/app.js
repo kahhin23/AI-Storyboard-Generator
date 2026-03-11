@@ -26,6 +26,8 @@ const app = {
         user: null, // Tracks authenticated user
         isGuest: false,
         guestHistory: [], // In-memory only; disappears on refresh
+        characters: [], // In-memory mirror of loaded characters
+        selectedCharacterId: null,
         project: {
             name: '',
             description: '',
@@ -154,6 +156,8 @@ const app = {
                         if (this.state.isGuest) return;
                         this.state.user = user;
                         this.state.isGuest = false;
+                        this.state.characters = [];
+                        this.state.selectedCharacterId = null;
 
                         // Update UI
                         document.getElementById('user-profile-dropdown').style.display = 'block';
@@ -164,6 +168,7 @@ const app = {
 
                         // Load History
                         this.loadHistory();
+                        this.loadCharacters();
 
                         // Navigate to home if currently on login
                         if (this.state.currentScreen === 'login') {
@@ -183,6 +188,8 @@ const app = {
 
                         // Clear History
                         document.getElementById('history-list').innerHTML = '<p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>';
+                        this.state.characters = [];
+                        this.state.selectedCharacterId = null;
 
                         // Navigate to login
                         if (this.state.currentScreen !== 'login') {
@@ -198,6 +205,8 @@ const app = {
         this.state.isGuest = true;
         this.state.user = { displayName: 'Guest', isGuest: true };
         this.state.guestHistory = [];
+        this.state.characters = [];
+        this.state.selectedCharacterId = null;
 
         // Update UI to look "logged in"
         document.getElementById('user-profile-dropdown').style.display = 'block';
@@ -218,6 +227,8 @@ const app = {
         this.state.isGuest = false;
         this.state.user = null;
         this.state.guestHistory = [];
+        this.state.characters = [];
+        this.state.selectedCharacterId = null;
 
         // Hide profile UI
         document.getElementById('user-profile-dropdown').style.display = 'none';
@@ -1077,6 +1088,277 @@ const app = {
     closeHistoryModal() {
         document.getElementById('history-modal').classList.add('hidden');
         document.getElementById('history-modal-body').innerHTML = '';
+    }
+
+    ,
+
+    // ───── Characters Modal ─────
+    openCharactersModal() {
+        if (!this.state.user) {
+            alert("Please login (or continue as guest) to manage characters.");
+            return;
+        }
+
+        const modal = document.getElementById('characters-modal');
+        if (!modal) return;
+
+        // Always start with no selection so the detail panel is hidden until Add/select.
+        this.state.selectedCharacterId = null;
+
+        const noteEl = document.getElementById('characters-mode-note');
+        if (noteEl) {
+            noteEl.textContent = this.state.isGuest
+                ? 'Guest mode: characters are stored only for this session and will disappear on refresh.'
+                : 'Signed in: characters are saved to your Firebase account.';
+        }
+
+        modal.classList.remove('hidden');
+        this.loadCharacters();
+        this.renderCharactersList();
+        this.renderSelectedCharacterToForm();
+    },
+
+    closeCharactersModal() {
+        const modal = document.getElementById('characters-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+    },
+
+    async loadCharacters() {
+        if (!this.state.user) return;
+        if (this.state.isGuest) return;
+        if (!window.firebaseAuthAPI?.getUserCharacters) return;
+
+        try {
+            const chars = await window.firebaseAuthAPI.getUserCharacters(this.state.user.uid);
+            this.state.characters = Array.isArray(chars) ? chars : [];
+            this.renderCharactersList();
+            this.renderSelectedCharacterToForm();
+        } catch (e) {
+            console.error('Failed to load characters:', e);
+        }
+    },
+
+    renderCharactersList() {
+        const listEl = document.getElementById('characters-list');
+        if (!listEl) return;
+
+        const chars = this.state.characters || [];
+        if (chars.length === 0) {
+            listEl.innerHTML = '<p class="history-empty" id="characters-emptyMsg">No characters yet.</p>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        chars.forEach(ch => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'character-card' + (ch.id === this.state.selectedCharacterId ? ' active' : '');
+            const title = (ch.name || 'Untitled').trim() || 'Untitled';
+            const meta = (ch.position || '').trim();
+            card.innerHTML = `
+                <div class="character-card__title">${title}</div>
+                <div class="character-card__meta">${meta || '—'}</div>
+            `;
+            card.addEventListener('click', () => {
+                this.state.selectedCharacterId = ch.id;
+                this.renderCharactersList();
+                this.renderSelectedCharacterToForm();
+            });
+            listEl.appendChild(card);
+        });
+    },
+
+    _getSelectedCharacter() {
+        const id = this.state.selectedCharacterId;
+        if (!id) return null;
+        return (this.state.characters || []).find(c => c.id === id) || null;
+    },
+
+    renderSelectedCharacterToForm() {
+        const ch = this._getSelectedCharacter();
+
+        const placeholderEl = document.getElementById('characters-detail-placeholder');
+        const formWrapEl = document.getElementById('characters-form-wrapper');
+        if (placeholderEl && formWrapEl) {
+            if (!ch) {
+                placeholderEl.classList.remove('hidden');
+                formWrapEl.classList.add('hidden');
+            } else {
+                placeholderEl.classList.add('hidden');
+                formWrapEl.classList.remove('hidden');
+            }
+        }
+
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.value = val || '';
+        };
+
+        setVal('char-name', ch?.name);
+        setVal('char-sex', ch?.sex);
+        setVal('char-age', ch?.age);
+        setVal('char-traits', ch?.traits);
+        setVal('char-background', ch?.background);
+        setVal('char-position', ch?.position);
+
+        const delBtn = document.getElementById('btn-character-delete');
+        if (delBtn) delBtn.disabled = !ch;
+    },
+
+    addNewCharacter() {
+        if (!this.state.user) return;
+        const tempId = 'temp-' + Date.now();
+        const newCh = {
+            id: tempId,
+            userId: this.state.isGuest ? 'guest' : this.state.user.uid,
+            name: '',
+            sex: '',
+            age: '',
+            traits: '',
+            background: '',
+            position: '',
+            _temp: true,
+            createdAt: new Date()
+        };
+
+        this.state.characters = [newCh, ...(this.state.characters || [])];
+        this.state.selectedCharacterId = tempId;
+        this.renderCharactersList();
+        this.renderSelectedCharacterToForm();
+
+        setTimeout(() => document.getElementById('char-name')?.focus(), 10);
+    },
+
+    _readCharacterForm() {
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        return {
+            name: getVal('char-name'),
+            sex: getVal('char-sex'),
+            age: getVal('char-age'),
+            traits: getVal('char-traits'),
+            background: getVal('char-background'),
+            position: getVal('char-position')
+        };
+    },
+
+    async saveCharacterFromModal() {
+        if (!this.state.user) return;
+
+        const ch = this._getSelectedCharacter();
+        const form = this._readCharacterForm();
+        if (!form.name) {
+            this.showError('char-name', 'Please enter a character name.');
+            return;
+        }
+
+        // Guest mode: in-memory only
+        if (this.state.isGuest) {
+            const id = ch?.id || ('guest-' + Date.now());
+            const merged = { ...(ch || {}), id, ...form, updatedAt: new Date() };
+            this.state.characters = (this.state.characters || []).map(c => c.id === id ? merged : c);
+            if (!ch) this.state.characters.unshift(merged);
+            this.state.selectedCharacterId = id;
+            this.renderCharactersList();
+            this.renderSelectedCharacterToForm();
+            this.addChatMessage('info', 'Saved character (guest mode). This will disappear on refresh.');
+            return;
+        }
+
+        if (!window.firebaseAuthAPI?.saveCharacter) {
+            alert("Characters service is still loading...");
+            return;
+        }
+
+        const btn = document.getElementById('btn-character-save');
+        const original = btn?.innerHTML;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        }
+
+        try {
+            const saveId = await window.firebaseAuthAPI.saveCharacter(this.state.user.uid, {
+                id: ch && !ch._temp ? ch.id : undefined,
+                ...form
+            });
+
+            const merged = { ...(ch || {}), id: saveId, ...form, _temp: false, updatedAt: new Date() };
+            // Replace temp entry if present; otherwise upsert
+            const existingIdx = (this.state.characters || []).findIndex(c => c.id === (ch?.id));
+            if (existingIdx >= 0) {
+                const copy = [...this.state.characters];
+                copy[existingIdx] = merged;
+                this.state.characters = copy;
+            } else {
+                this.state.characters = [merged, ...(this.state.characters || [])];
+            }
+            // If it was temp, remove any other temp with same old id
+            this.state.characters = (this.state.characters || []).filter(c => c.id !== (ch?._temp ? ch.id : null) || c.id === saveId);
+
+            this.state.selectedCharacterId = saveId;
+            this.renderCharactersList();
+            this.renderSelectedCharacterToForm();
+        } catch (e) {
+            alert("Failed to save character: " + (e?.message || e));
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+    },
+
+    async deleteCharacterFromModal() {
+        if (!this.state.user) return;
+        const ch = this._getSelectedCharacter();
+        if (!ch) return;
+
+        const ok = confirm(`Delete character "${(ch.name || 'Untitled').trim() || 'Untitled'}"?`);
+        if (!ok) return;
+
+        // Guest mode: in-memory only
+        if (this.state.isGuest) {
+            this.state.characters = (this.state.characters || []).filter(c => c.id !== ch.id);
+            this.state.selectedCharacterId = this.state.characters[0]?.id || null;
+            this.renderCharactersList();
+            this.renderSelectedCharacterToForm();
+            return;
+        }
+
+        if (!window.firebaseAuthAPI?.deleteCharacter) {
+            alert("Characters service is still loading...");
+            return;
+        }
+
+        const btn = document.getElementById('btn-character-delete');
+        const original = btn?.innerHTML;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
+        }
+
+        try {
+            // If it's still a temp (never saved), just remove locally
+            if (ch._temp) {
+                this.state.characters = (this.state.characters || []).filter(c => c.id !== ch.id);
+            } else {
+                await window.firebaseAuthAPI.deleteCharacter(ch.id);
+                this.state.characters = (this.state.characters || []).filter(c => c.id !== ch.id);
+            }
+            // After delete, no auto-select; keep the detail panel hidden until user selects/adds.
+            this.state.selectedCharacterId = null;
+            this.renderCharactersList();
+            this.renderSelectedCharacterToForm();
+        } catch (e) {
+            alert("Failed to delete character: " + (e?.message || e));
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
     }
 };
 

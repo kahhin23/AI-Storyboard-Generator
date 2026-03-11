@@ -11,6 +11,9 @@ import {
     getFirestore,
     collection,
     addDoc,
+    doc,
+    updateDoc,
+    deleteDoc,
     getDocs,
     query,
     where,
@@ -101,6 +104,63 @@ window.firebaseAuthAPI = {
             return storyboards;
         } catch (e) {
             console.error("Error fetching storyboards: ", e);
+            throw e;
+        }
+    },
+
+    saveCharacter: async (userId, character) => {
+        try {
+            const payload = {
+                userId,
+                name: character.name || '',
+                sex: character.sex || '',
+                age: character.age || '',
+                traits: character.traits || '',
+                background: character.background || '',
+                position: character.position || '',
+                updatedAt: new Date()
+            };
+
+            if (character.id) {
+                await updateDoc(doc(db, "characters", character.id), payload);
+                return character.id;
+            }
+
+            const docRef = await addDoc(collection(db, "characters"), {
+                ...payload,
+                createdAt: new Date()
+            });
+            return docRef.id;
+        } catch (e) {
+            console.error("Error saving character: ", e);
+            throw e;
+        }
+    },
+
+    deleteCharacter: async (characterId) => {
+        try {
+            await deleteDoc(doc(db, "characters", characterId));
+            return true;
+        } catch (e) {
+            console.error("Error deleting character: ", e);
+            throw e;
+        }
+    },
+
+    getUserCharacters: async (userId) => {
+        try {
+            const q = query(collection(db, "characters"),
+                where("userId", "==", userId),
+                orderBy("createdAt", "desc"));
+            const querySnapshot = await getDocs(q);
+
+            const characters = [];
+            querySnapshot.forEach((docSnap) => {
+                characters.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            return characters;
+        } catch (e) {
+            console.error("Error fetching characters: ", e);
             throw e;
         }
     }
