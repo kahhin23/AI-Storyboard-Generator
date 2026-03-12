@@ -72,7 +72,7 @@ window.firebaseAuthAPI = {
             }
         });
     },
-    saveStoryboard: async (userId, projectData, storyboardHtml) => {
+    saveStoryboard: async (userId, projectData, storyboardHtml, contentType = 'scene') => {
         try {
             const docRef = await addDoc(collection(db, "storyboards"), {
                 userId: userId,
@@ -81,6 +81,7 @@ window.firebaseAuthAPI = {
                 projectGenre: projectData.genre,
                 projectLanguage: projectData.language,
                 htmlContent: storyboardHtml,
+                contentType: contentType,
                 createdAt: new Date()
             });
             console.log("Storyboard saved with ID: ", docRef.id);

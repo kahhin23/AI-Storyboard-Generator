@@ -1453,10 +1453,51 @@ input[type="number"] {
 .history-title {
     font-size: 1.2rem;
     font-weight: 600;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     color: var(--text-primary);
+}
+
+.history-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 1rem;
+}
+
+.btn-toggle {
+    flex: 1;
+    padding: 0.6rem;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.btn-toggle.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn.purple {
+    background: var(--accent-secondary);
+    color: white;
+}
+
+.btn.purple:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
 }
 
 .history-list {
@@ -1890,4 +1931,120 @@ input[type="number"] {
 #storyboard-output li,
 #storyboard-output span {
     word-break: keep-all !important;
+}
+/* ───── Chat Actions Buttons ───── */
+.chat-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.chat-action-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 120px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: var(--transition-fast);
+}
+
+.scene-btn {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+}
+
+.scene-btn:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: #60a5fa;
+    transform: translateY(-1px);
+}
+
+.script-btn {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+}
+
+.script-btn:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: #a78bfa;
+    transform: translateY(-1px);
+}
+
+.chat-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.chat-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* ───── Output Split View ───── */
+.output-split {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+    min-height: 0;
+}
+
+.output-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow shrinking */
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    transition: var(--transition-fast);
+}
+
+.output-section:focus-within {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+.section-label {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--glass-border);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-label::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+}
+
+.output-section .panel-body {
+    padding: 1.25rem;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    flex: 1;
 }

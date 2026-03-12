@@ -37,7 +37,8 @@ const app = {
             genre: '',
             language: ''
         },
-        currentScreen: 'login' // Changed initial screen to login
+        currentScreen: 'login', // Changed initial screen to login
+        historyFilter: 'scene' // 'scene' or 'script'
     },
 
     genres: [
@@ -431,75 +432,105 @@ const app = {
                 duration: document.getElementById('editor-length').value.trim(),
                 vibe: document.getElementById('editor-vibe').value.trim()
             };
-            const currentHtml = this.getStoryboardRawHtml();
+            const sceneHtml = document.getElementById('scene-output').innerHTML;
+            const scriptHtml = document.getElementById('script-output').innerHTML;
 
             try {
-                const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData, this.state.project);
+                const response = await geminiAPI.ingestFileContext(label, fileText, sceneHtml, scriptHtml, middleData, this.state.project, this.state.characters);
 
                 document.getElementById(loadingId)?.remove();
                 this.addChatMessage('ai', response.chatReply);
-                this.diffAndRender(currentHtml, response.newHtml);
+                
+                if (response.newSceneHtml && response.newSceneHtml.trim() !== '') {
+                    const combinedSceneHtml = sceneHtml + "\n" + response.newSceneHtml;
+                    this.diffAndRender('scene-output', sceneHtml, combinedSceneHtml);
+                }
+                if (response.newScriptHtml && response.newScriptHtml !== scriptHtml) {
+                    this.diffAndRender('script-output', scriptHtml, response.newScriptHtml);
+                }
 
             } catch (error) {
                 document.getElementById(loadingId)?.remove();
-                this.addChatMessage('error', `Failed to apply ${label}. Please try again.`);
+                this.addChatMessage('error', `File Analysis Error: ${error.message}`);
+                console.error(error);
             }
         });
 
-        // Handle Chat Input Enter key with Gemini modify API integration
+        // ───── Chat Action Buttons ─────
+        document.getElementById('btn-update-scene').addEventListener('click', () => this.handleChatSubmit('scene'));
+        document.getElementById('btn-update-script').addEventListener('click', () => this.handleChatSubmit('script'));
+
+        // Handle Chat Input Enter key - defaults to General Chat
         document.getElementById('chat-input').addEventListener('keypress', async (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                const val = e.target.value.trim();
-                const inputElement = e.target;
-
-                if (val && !inputElement.disabled) {
-                    const chatMessages = document.getElementById('chat-messages');
-
-                    // 1. Display User Message
-                    this.addChatMessage('user', val);
-                    inputElement.value = '';
-                    inputElement.disabled = true; // Disable input while waiting
-
-                    // 2. Add loading indicator to chat
-                    const loadingId = 'loading-' + Date.now();
-                    chatMessages.innerHTML += `<div id="${loadingId}" style="color:var(--text-secondary); font-size:0.9rem; font-style:italic;">AI is drafting changes...</div>`;
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-                    // 3. Gather Context from UI
-                    const middleData = {
-                        time: document.getElementById('editor-time').value.trim(),
-                        location: document.getElementById('editor-location').value.trim(),
-                        character: document.getElementById('editor-character').value.trim(),
-                        duration: document.getElementById('editor-length').value.trim(),
-                        vibe: document.getElementById('editor-vibe').value.trim()
-                    };
-                    const currentHtml = this.getStoryboardRawHtml();
-
-                    // 4. Call Gemini modify function
-                    try {
-                        const response = await geminiAPI.modifyStoryboard(currentHtml, middleData, val, this.state.project);
-
-                        // Remove loading
-                        const loadingMessage = document.getElementById(loadingId);
-                        if (loadingMessage) loadingMessage.remove();
-
-                        // 5. Update Chat & Storyboard with diff highlights
-                        this.addChatMessage('ai', response.chatReply);
-                        this.diffAndRender(currentHtml, response.newHtml);
-
-                    } catch (error) {
-                        const loadingMessage = document.getElementById(loadingId);
-                        if (loadingMessage) loadingMessage.remove();
-                        this.addChatMessage('error', 'Failed to apply changes. Try again later.');
-                    }
-
-                    // 6. Cleanup
-                    inputElement.disabled = false;
-                    setTimeout(() => inputElement.focus(), 10);
-                }
+                this.handleChatSubmit('chat');
             }
         });
+    },
+
+    async handleChatSubmit(target) {
+        const inputElement = document.getElementById('chat-input');
+        const val = inputElement.value.trim();
+        if (!val || inputElement.disabled) return;
+
+        const chatMessages = document.getElementById('chat-messages');
+
+        // 1. Display User Message
+        this.addChatMessage('user', val);
+        inputElement.value = '';
+        inputElement.disabled = true;
+
+        // 2. Add loading indicator
+        const loadingId = 'loading-' + Date.now();
+        const actionLabel = target === 'chat' ? 'thinking...' : `drafting ${target} changes...`;
+        chatMessages.innerHTML += `<div id="${loadingId}" style="color:var(--text-secondary); font-size:0.9rem; font-style:italic;">AI is ${actionLabel}</div>`;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 3. Gather Context
+        const middleData = {
+            time: document.getElementById('editor-time').value.trim(),
+            location: document.getElementById('editor-location').value.trim(),
+            character: document.getElementById('editor-character').value.trim(),
+            duration: document.getElementById('editor-length').value.trim(),
+            vibe: document.getElementById('editor-vibe').value.trim()
+        };
+
+        const sceneHtml = document.getElementById('scene-output').innerHTML;
+        const scriptHtml = document.getElementById('script-output').innerHTML;
+
+        try {
+            // 4. Call Gemini modify function with target
+            const response = await geminiAPI.modifyStoryboard(sceneHtml, scriptHtml, middleData, val, this.state.project, this.state.characters, target);
+
+            // Remove loading
+            document.getElementById(loadingId)?.remove();
+
+            // 5. Update Chat
+            this.addChatMessage('ai', response.chatReply);
+
+            // 6. Update Outputs if applicable
+            if (target === 'scene' || target === 'chat') {
+                if (response.newSceneHtml && response.newSceneHtml.trim() !== '') {
+                    const combinedSceneHtml = sceneHtml + "\n" + response.newSceneHtml;
+                    this.diffAndRender('scene-output', sceneHtml, combinedSceneHtml);
+                }
+            }
+            if (target === 'script' || target === 'chat') {
+                if (response.newScriptHtml && response.newScriptHtml !== scriptHtml) {
+                    this.diffAndRender('script-output', scriptHtml, response.newScriptHtml);
+                }
+            }
+
+        } catch (error) {
+            document.getElementById(loadingId)?.remove();
+            this.addChatMessage('error', `Gemini API Error: ${error.message}`);
+            console.error(error);
+        }
+
+        // 7. Cleanup
+        inputElement.disabled = false;
+        setTimeout(() => inputElement.focus(), 10);
     },
 
     addChatMessage(role, text) {
@@ -668,7 +699,7 @@ const app = {
 
         try {
             // Call Gemini API (implemented in gemini.js)
-            const storyboardData = await geminiAPI.generateStoryboard(this.state.project);
+            const storyboardData = await geminiAPI.generateStoryboard(this.state.project, this.state.characters);
 
             // Success
             this.populateEditor(storyboardData);
@@ -712,7 +743,6 @@ const app = {
     },
 
     populateEditor(storyboardData) {
-        const output = document.getElementById('storyboard-output');
 
         // Populate Middle Column Fields — start blank
         document.getElementById('editor-length').value = '';
@@ -721,8 +751,9 @@ const app = {
         document.getElementById('editor-location').value = '';
         document.getElementById('editor-character').value = '';
 
-        // Keep AI Output blank when entering the editor.
-        if (output) output.innerHTML = '';
+        // Keep AI Outputs blank when entering the editor.
+        document.getElementById('scene-output').innerHTML = '';
+        document.getElementById('script-output').innerHTML = '';
     },
 
     normalizeStoryboardHtml(html) {
@@ -740,13 +771,59 @@ const app = {
     },
 
     getStoryboardRawHtml() {
-        const output = document.getElementById('storyboard-output');
-        if (!output) return '';
-        return this.normalizeStoryboardHtml(output.innerHTML);
+        const sceneHtml = document.getElementById('scene-output')?.innerHTML || '';
+        const scriptHtml = document.getElementById('script-output')?.innerHTML || '';
+        return this.normalizeStoryboardHtml(sceneHtml + '\n' + scriptHtml);
     },
 
     renderStoryboard(html) {
-        const output = document.getElementById('storyboard-output');
+        this.renderStoryboardToElement('scene-output', html);
+    },
+
+    wrapScene(html, index) {
+        return `<div class="scene-container" id="scene-${index}">
+            <div class="scene-content">${html}</div>
+        </div>`;
+    },
+
+    diffAndRender(elementId, oldHtml, newHtml) {
+        const outputElement = document.getElementById(elementId);
+        if (!outputElement) return;
+
+        oldHtml = this.normalizeStoryboardHtml(oldHtml);
+        newHtml = this.normalizeStoryboardHtml(newHtml);
+
+        // Simple DOM-based block diffing
+        const oldDiv = document.createElement('div');
+        oldDiv.innerHTML = oldHtml;
+        const newDiv = document.createElement('div');
+        newDiv.innerHTML = newHtml;
+
+        const oldBlocks = Array.from(oldDiv.children).map(el => el.textContent.trim());
+        const newElements = Array.from(newDiv.children);
+
+        const resultHtml = newElements.map(el => {
+            const textContent = el.textContent.trim();
+            // If the block is completely new or its text changed, highlight it
+            if (!oldBlocks.includes(textContent)) {
+                return `<div class="changed-block">${el.outerHTML}</div>`;
+            }
+            return el.outerHTML;
+        }).join('\n');
+
+        outputElement.style.opacity = '0';
+        setTimeout(() => {
+            if (elementId === 'scene-output') {
+                this.renderStoryboardToElement(elementId, newHtml);
+            } else {
+                outputElement.innerHTML = newHtml; // Script output might not need scene wrapping
+            }
+            outputElement.style.opacity = '1';
+        }, 200);
+    },
+
+    renderStoryboardToElement(elementId, html) {
+        const output = document.getElementById(elementId);
         html = this.normalizeStoryboardHtml(html);
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
@@ -768,12 +845,6 @@ const app = {
         if (currentScene) sceneHtml += this.wrapScene(currentScene, sceneIndex);
 
         output.innerHTML = sceneHtml;
-    },
-
-    wrapScene(html, index) {
-        return `<div class="scene-container" id="scene-${index}">
-            <div class="scene-content">${html}</div>
-        </div>`;
     },
 
     _resetFormState() {
@@ -808,7 +879,8 @@ const app = {
 
         // Clear Chat & Output
         document.getElementById('chat-messages').innerHTML = '';
-        document.getElementById('storyboard-output').innerHTML = '';
+        document.getElementById('scene-output').innerHTML = '';
+        document.getElementById('script-output').innerHTML = '';
     },
 
     resetFlow(forceLogout = false) {
@@ -930,40 +1002,31 @@ const app = {
         this.addChatMessage('info', 'Synopsis saved and will be used for AI context.');
     },
 
-    diffAndRender(oldHtml, newHtml) {
-        const outputElement = document.getElementById('storyboard-output');
-        oldHtml = this.normalizeStoryboardHtml(oldHtml);
-        newHtml = this.normalizeStoryboardHtml(newHtml);
-
-        // Simple DOM-based block diffing
-        const oldDiv = document.createElement('div');
-        oldDiv.innerHTML = oldHtml;
-        const newDiv = document.createElement('div');
-        newDiv.innerHTML = newHtml;
-
-        const oldBlocks = Array.from(oldDiv.children).map(el => el.textContent.trim());
-        const newElements = Array.from(newDiv.children);
-
-        const resultHtml = newElements.map(el => {
-            const textContent = el.textContent.trim();
-            // If the block is completely new or its text changed, highlight it
-            if (!oldBlocks.includes(textContent)) {
-                return `<div class="changed-block">${el.outerHTML}</div>`;
-            }
-            return el.outerHTML;
-        }).join('\n');
-
-        outputElement.style.opacity = '0';
-        setTimeout(() => {
-            this.renderStoryboard(newHtml);
-            // Re-apply diff highlights if necessary - for now we just re-render
-            outputElement.style.opacity = '1';
-        }, 200);
-    },
-
     downloadPDF() {
-        // Only used for the active editor Export (if needed)
-        this._executeDownload('storyboard-output', this.state.project.name);
+        // Create a temporary container to merge both for export
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.innerHTML = `
+            <div id="temp-export-content" style="padding: 40px; color: black; background: white;">
+                <h1 style="text-align:center; font-size: 28px; margin-bottom: 20px;">${this.state.project.name}</h1>
+                <div style="margin-bottom:30px;">
+                    <h2 style="border-bottom:2px solid #3b82f6; color: #3b82f6; padding-bottom: 10px;">SCENE</h2>
+                    <div style="margin-top: 15px;">${document.getElementById('scene-output').innerHTML}</div>
+                </div>
+                <div style="margin-top:30px;">
+                    <h2 style="border-bottom:2px solid #8b5cf6; color: #8b5cf6; padding-bottom: 10px;">SCRIPT</h2>
+                    <div style="margin-top: 15px;">${document.getElementById('script-output').innerHTML}</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(tempContainer);
+        
+        this._executeDownload('temp-export-content', this.state.project.name);
+        
+        setTimeout(() => {
+            document.body.removeChild(tempContainer);
+        }, 2000);
     },
 
     downloadHistoryPDF() {
@@ -991,136 +1054,138 @@ const app = {
         html2pdf().set(opt).from(element).save().then(() => {
             element.style.color = originalColor;
             const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages && elementId === 'storyboard-output') {
+            if (chatMessages && (elementId === 'scene-output' || elementId === 'temp-export-content')) {
                 chatMessages.innerHTML += `<div style="color:#FFB300; font-size:0.9rem;">-> Exported Storyboard PDF!</div>`;
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         });
     },
 
-    async saveStoryboard() {
+    async saveStoryboard(type = 'scene') {
         if (!this.state.user) {
-            alert("You must be logged in to save storyboards.");
+            alert("You must be logged in to save.");
             return;
         }
 
-        const htmlContent = document.getElementById('storyboard-output').innerHTML;
-        if (!htmlContent || htmlContent.trim() === '') {
-            alert("Nothing to save!");
+        const sceneHtml = document.getElementById('scene-output').innerHTML;
+        const scriptHtml = document.getElementById('script-output').innerHTML;
+
+        const contentToSave = type === 'scene' ? sceneHtml : scriptHtml;
+
+        if (!contentToSave || contentToSave.trim() === '') {
+            alert(`No ${type} content to save!`);
             return;
         }
 
-        // Guest mode: store in-memory only (no Firebase)
+        // Format for storage
+        const htmlContent = `
+            <div class="saved-storyboard type-${type}">
+                <div class="saved-${type}-section">
+                    <h2 style="color:${type === 'scene' ? '#3b82f6' : '#8b5cf6'}; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:15px;">
+                        SAVED ${type.toUpperCase()}
+                    </h2>
+                    ${contentToSave}
+                </div>
+            </div>
+        `;
+
+        // Guest mode
         if (this.state.isGuest) {
             const item = {
                 id: 'guest-' + Date.now(),
                 userId: 'guest',
-                projectName: this.state.project.name || 'Untitled',
+                projectName: (this.state.project.name || 'Untitled') + ` (${type === 'scene' ? 'Scene' : 'Script'})`,
                 projectType: this.state.project.type,
                 projectGenre: this.state.project.genre,
                 projectLanguage: this.state.project.language,
                 htmlContent,
+                contentType: type,
                 createdAt: new Date()
             };
             this.state.guestHistory.unshift(item);
             await this.loadHistory();
-            this.addChatMessage('info', 'Saved to session History (guest mode). This will disappear on refresh.');
+            this.addChatMessage('info', `Saved ${type} to session History.`);
             return;
         }
 
-        const btnSave = document.getElementById('btn-save');
+        const btnId = type === 'scene' ? 'btn-save-scene' : 'btn-save-script';
+        const btnSave = document.getElementById(btnId);
         const originalText = btnSave.innerHTML;
         btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         btnSave.disabled = true;
 
         try {
-            await window.firebaseAuthAPI.saveStoryboard(this.state.user.uid, this.state.project, htmlContent);
+            // Include contentType in the save
+            await window.firebaseAuthAPI.saveStoryboard(this.state.user.uid, {
+                ...this.state.project,
+                name: (this.state.project.name || 'Untitled') + ` (${type === 'scene' ? 'Scene' : 'Script'})`,
+            }, htmlContent, type);
 
-            // Reload history to show new item
             await this.loadHistory();
 
-            // Show success in UI and Chat
             btnSave.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
-            btnSave.classList.replace('green', 'primary');
-            this.addChatMessage('info', '✅ Storyboard successfully saved to your History.');
+            this.addChatMessage('info', `✅ ${type.charAt(0).toUpperCase() + type.slice(1)} successfully saved.`);
 
             setTimeout(() => {
                 btnSave.innerHTML = originalText;
                 btnSave.disabled = false;
-                btnSave.classList.replace('primary', 'green');
             }, 3000);
 
         } catch (error) {
             btnSave.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error';
             btnSave.disabled = false;
             setTimeout(() => btnSave.innerHTML = originalText, 3000);
-            alert("Failed to save storyboard: " + error.message);
+            alert("Failed to save: " + error.message);
         }
+    },
+
+    setHistoryFilter(filter) {
+        this.state.historyFilter = filter;
+        
+        // Update UI buttons
+        document.getElementById('toggle-history-scene').classList.toggle('active', filter === 'scene');
+        document.getElementById('toggle-history-script').classList.toggle('active', filter === 'script');
+        
+        this.loadHistory();
     },
 
     async loadHistory() {
         if (!this.state.user) return;
+        const filter = this.state.historyFilter;
 
-        // Guest mode: render in-memory list only
+        const listContainer = document.getElementById('history-list');
+
+        let storyboards = [];
         if (this.state.isGuest) {
-            const listContainer = document.getElementById('history-list');
-            const storyboards = this.state.guestHistory || [];
+            storyboards = (this.state.guestHistory || []).filter(item => (item.contentType || 'scene') === filter);
+        } else {
+            const allItems = await window.firebaseAuthAPI.getUserStoryboards(this.state.user.uid);
+            // Assuming saveStoryboard now stores contentType, or we filter by title/content if not possible
+            // For now, let's assume the API or our storage handles it.
+            // If the API doesn't support it yet, we might need to modify firebaseAuthAPI too.
+            storyboards = allItems.filter(item => (item.contentType || 'scene') === filter);
+        }
 
-            if (storyboards.length === 0) {
-                listContainer.innerHTML = '<p class="history-empty" id="history-emptyMsg">No session storyboards yet.</p>';
-                return;
-            }
-
-            listContainer.innerHTML = '';
-            storyboards.forEach(sb => {
-                const date = sb.createdAt instanceof Date ? sb.createdAt.toLocaleDateString() : 'Unknown date';
-                const el = document.createElement('div');
-                el.className = 'history-item';
-                el.innerHTML = `
-                    <h4>${sb.projectName || 'Untitled'}</h4>
-                    <p>${sb.projectGenre || 'Various'} • ${sb.projectLanguage || 'EN'}</p>
-                    <p style="font-size:0.7rem; margin-top:4px; opacity:0.6;"><i class="fa-regular fa-calendar"></i> ${date}</p>
-                `;
-                el.addEventListener('click', () => {
-                    this.openHistoryModal(sb);
-                });
-                listContainer.appendChild(el);
-            });
+        if (storyboards.length === 0) {
+            listContainer.innerHTML = `<p class="history-empty" id="history-emptyMsg">No saved ${filter}s yet.</p>`;
             return;
         }
 
-        try {
-            const listContainer = document.getElementById('history-list');
-            const storyboards = await window.firebaseAuthAPI.getUserStoryboards(this.state.user.uid);
-
-            if (storyboards.length === 0) {
-                listContainer.innerHTML = '<p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>';
-                return;
-            }
-
-            listContainer.innerHTML = ''; // Clear current list
-
-            storyboards.forEach(sb => {
-                const date = sb.createdAt && sb.createdAt.toDate ? sb.createdAt.toDate().toLocaleDateString() : 'Unknown date';
-                const el = document.createElement('div');
-                el.className = 'history-item';
-                el.innerHTML = `
-                    <h4>${sb.projectName || 'Untitled'}</h4>
-                    <p>${sb.projectGenre || 'Various'} • ${sb.projectLanguage || 'EN'}</p>
-                    <p style="font-size:0.7rem; margin-top:4px; opacity:0.6;"><i class="fa-regular fa-calendar"></i> ${date}</p>
-                `;
-
-                // Add click listener to open modal with this content
-                el.addEventListener('click', () => {
-                    this.openHistoryModal(sb);
-                });
-
-                listContainer.appendChild(el);
-            });
-
-        } catch (error) {
-            console.error("Failed to load history UI: ", error);
-        }
+        listContainer.innerHTML = '';
+        storyboards.forEach(sb => {
+            const date = (sb.createdAt && sb.createdAt.toDate) ? sb.createdAt.toDate().toLocaleDateString() : 
+                         (sb.createdAt instanceof Date ? sb.createdAt.toLocaleDateString() : 'Unknown date');
+            
+            const el = document.createElement('div');
+            el.className = 'history-item';
+            el.innerHTML = `
+                <h4>${sb.projectName || 'Untitled'}</h4>
+                <p>${sb.projectGenre || 'Various'} • ${sb.projectLanguage || 'EN'}</p>
+                <p style="font-size:0.7rem; margin-top:4px; opacity:0.6;"><i class="fa-regular fa-calendar"></i> ${date}</p>
+            `;
+            el.addEventListener('click', () => this.openHistoryModal(sb));
+            listContainer.appendChild(el);
+        });
     },
 
     async downloadDOCX() {

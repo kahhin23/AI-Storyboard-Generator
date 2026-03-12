@@ -39,10 +39,16 @@
             <i class="fa-solid fa-clock-rotate-left"></i>
         </button>
         <div class="history-content">
-            <h3 class="history-title">Saved Storyboards</h3>
+            <h3 class="history-title">History</h3>
+            
+            <div class="history-toggle">
+                <button id="toggle-history-scene" class="btn-toggle active" onclick="app.setHistoryFilter('scene')">Scenes</button>
+                <button id="toggle-history-script" class="btn-toggle" onclick="app.setHistoryFilter('script')">Scripts</button>
+            </div>
+
             <div id="history-list" class="history-list">
                 <!-- History Items will be populated here -->
-                <p class="history-empty" id="history-emptyMsg">No saved storyboards yet.</p>
+                <p class="history-empty" id="history-emptyMsg">No saved items yet.</p>
             </div>
         </div>
     </aside>
@@ -240,6 +246,14 @@
                     </div>
                     <div class="panel user-input orange-panel">
                         <textarea placeholder="User Input..." id="chat-input"></textarea>
+                        <div class="chat-actions">
+                            <button id="btn-update-scene" class="btn chat-action-btn scene-btn" title="Send to Scene Container">
+                                <i class="fa-solid fa-clapperboard"></i> Update Scene
+                            </button>
+                            <button id="btn-update-script" class="btn chat-action-btn script-btn" title="Send to Script Container">
+                                <i class="fa-solid fa-file-lines"></i> Update Script
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -271,12 +285,28 @@
                 <div class="layout-col right-col">
                     <div class="panel ai-output green-panel">
                         <div class="panel-header">AI Output</div>
-                        <div class="panel-body" id="storyboard-output" contenteditable="true">
-                            <!-- Generated draft storyboard displayed and editable here -->
+                        <div class="output-split">
+                            <div class="output-section">
+                                <div class="section-label">SCENE</div>
+                                <div class="panel-body" id="scene-output" contenteditable="true">
+                                    <!-- Scene content here -->
+                                </div>
+                            </div>
+                            <div class="output-section">
+                                <div class="section-label">SCRIPT</div>
+                                <div class="panel-body" id="script-output" contenteditable="true">
+                                    <!-- Script content here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="editor-bottom-action">
-                        <button class="btn green" id="btn-save" onclick="app.saveStoryboard()">Save to History</button>
+                        <button class="btn green" id="btn-save-scene" onclick="app.saveStoryboard('scene')">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Scene
+                        </button>
+                        <button class="btn purple" id="btn-save-script" onclick="app.saveStoryboard('script')">
+                            <i class="fa-solid fa-file-lines"></i> Save Script
+                        </button>
                         <button class="btn secondary" onclick="app.resetFlow()">Start New</button>
                     </div>
                 </div>
@@ -309,7 +339,8 @@
         <div class="characters-modal-content">
             <div class="characters-modal-header">
                 <h3>Characters</h3>
-                <button class="btn-close-modal" onclick="app.closeCharactersModal()"><i class="fa-solid fa-xmark"></i></button>
+                <button class="btn-close-modal" onclick="app.closeCharactersModal()"><i
+                        class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="characters-modal-body">
                 <div class="characters-pane characters-pane--left">
@@ -327,7 +358,8 @@
                     <div id="characters-detail-placeholder" class="characters-detail-placeholder">
                         <div class="characters-detail-placeholder__icon"><i class="fa-solid fa-user"></i></div>
                         <div class="characters-detail-placeholder__title">No character selected</div>
-                        <div class="characters-detail-placeholder__desc">Click <strong>Add</strong> to create one, or select a character from the list.</div>
+                        <div class="characters-detail-placeholder__desc">Click <strong>Add</strong> to create one, or
+                            select a character from the list.</div>
                     </div>
 
                     <div id="characters-form-wrapper" class="characters-form hidden">
@@ -337,7 +369,8 @@
                         </div>
                         <div class="input-group">
                             <label for="char-sex">Sex</label>
-                            <input type="text" id="char-sex" placeholder="e.g. Female / Male / Non-binary" autocomplete="off">
+                            <input type="text" id="char-sex" placeholder="e.g. Female / Male / Non-binary"
+                                autocomplete="off">
                         </div>
                         <div class="input-group">
                             <label for="char-age">Age</label>
@@ -345,22 +378,26 @@
                         </div>
                         <div class="input-group">
                             <label for="char-traits">Character Traits</label>
-                            <textarea id="char-traits" rows="3" placeholder="e.g. Brave, impulsive, loyal..."></textarea>
+                            <textarea id="char-traits" rows="3"
+                                placeholder="e.g. Brave, impulsive, loyal..."></textarea>
                         </div>
                         <div class="input-group">
                             <label for="char-background">Background</label>
-                            <textarea id="char-background" rows="4" placeholder="Backstory, key events, motivations..."></textarea>
+                            <textarea id="char-background" rows="4"
+                                placeholder="Backstory, key events, motivations..."></textarea>
                         </div>
                         <div class="input-group">
                             <label for="char-position">Position in the Show</label>
-                            <input type="text" id="char-position" placeholder="e.g. Protagonist / Antagonist / Supporting" autocomplete="off">
+                            <input type="text" id="char-position"
+                                placeholder="e.g. Protagonist / Antagonist / Supporting" autocomplete="off">
                         </div>
 
                         <div class="characters-actions">
                             <button class="btn primary" id="btn-character-save" onclick="app.saveCharacterFromModal()">
                                 <i class="fa-solid fa-floppy-disk"></i> Save
                             </button>
-                            <button class="btn secondary" id="btn-character-delete" onclick="app.deleteCharacterFromModal()">
+                            <button class="btn secondary" id="btn-character-delete"
+                                onclick="app.deleteCharacterFromModal()">
                                 <i class="fa-solid fa-trash"></i> Delete
                             </button>
                         </div>
@@ -376,12 +413,14 @@
         <div class="characters-modal-content synopsis-modal-content">
             <div class="characters-modal-header">
                 <h3>Synopsis</h3>
-                <button class="btn-close-modal" onclick="app.closeSynopsisModal()"><i class="fa-solid fa-xmark"></i></button>
+                <button class="btn-close-modal" onclick="app.closeSynopsisModal()"><i
+                        class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="synopsis-modal-body">
                 <div class="input-group" style="max-width:100%; margin-bottom:1rem;">
                     <label for="synopsis-text">Synopsis Text</label>
-                    <textarea id="synopsis-text" rows="12" placeholder="Write or paste your synopsis here..."></textarea>
+                    <textarea id="synopsis-text" rows="12"
+                        placeholder="Write or paste your synopsis here..."></textarea>
                 </div>
                 <input type="file" id="synopsis-file" accept=".txt" style="display:none;">
                 <div class="synopsis-actions">
@@ -396,7 +435,7 @@
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="js/gemini.js"></script>
