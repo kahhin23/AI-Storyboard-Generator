@@ -840,7 +840,8 @@ input[type="number"] {
 }
 
 .workspace-layout {
-    height: calc(100vh - 280px); /* Synchronized height for stability */
+    height: calc(100vh - 280px);
+    /* Synchronized height for stability */
     min-height: 600px;
     margin-bottom: 2rem;
 }
@@ -878,7 +879,8 @@ input[type="number"] {
 }
 
 .green-panel {
-    flex: 1; /* Stretch to take available height */
+    flex: 1;
+    /* Stretch to take available height */
     min-height: 0;
     border: 1px solid var(--accent-primary);
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
@@ -897,7 +899,8 @@ input[type="number"] {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    margin-bottom: 1.5rem; /* Requested gap between chat and input */
+    margin-bottom: 1.5rem;
+    /* Requested gap between chat and input */
 }
 
 .chat-room .panel-body {
