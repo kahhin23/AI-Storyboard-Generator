@@ -31,6 +31,7 @@ const app = {
         project: {
             name: '',
             description: '',
+            synopsis: '',
             type: '',
             duration: '',
             genre: '',
@@ -102,6 +103,7 @@ const app = {
             const payload = {
                 name: this.state.project.name || '',
                 description: this.state.project.description || '',
+                synopsis: this.state.project.synopsis || '',
                 type: this.state.project.type || '',
                 duration: this.state.project.duration || '',
                 genre: this.state.project.genre || '',
@@ -124,6 +126,7 @@ const app = {
                 ...this.state.project,
                 name: data.name || this.state.project.name,
                 description: data.description || this.state.project.description,
+                synopsis: data.synopsis || this.state.project.synopsis,
                 type: data.type || this.state.project.type,
                 duration: data.duration || this.state.project.duration,
                 genre: data.genre || this.state.project.genre,
@@ -318,6 +321,20 @@ const app = {
             btnCloseModal.addEventListener('click', () => this.closeHistoryModal());
         }
 
+        // Synopsis file upload (modal)
+        const synopsisFile = document.getElementById('synopsis-file');
+        if (synopsisFile) {
+            synopsisFile.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                try {
+                    await this._handleSynopsisFileSelected(file);
+                } catch (err) {
+                    console.error('Failed to read synopsis file:', err);
+                    alert('Failed to read the uploaded file.');
+                }
+            });
+        }
+
         // Home Screen
         document.getElementById('btn-create-project').addEventListener('click', () => {
             const name = document.getElementById('project-name').value.trim();
@@ -414,7 +431,7 @@ const app = {
                 duration: document.getElementById('editor-length').value.trim(),
                 vibe: document.getElementById('editor-vibe').value.trim()
             };
-            const currentHtml = document.getElementById('storyboard-output').innerHTML;
+            const currentHtml = this.getStoryboardRawHtml();
 
             try {
                 const response = await geminiAPI.ingestFileContext(label, fileText, currentHtml, middleData, this.state.project);
@@ -457,7 +474,7 @@ const app = {
                         duration: document.getElementById('editor-length').value.trim(),
                         vibe: document.getElementById('editor-vibe').value.trim()
                     };
-                    const currentHtml = document.getElementById('storyboard-output').innerHTML;
+                    const currentHtml = this.getStoryboardRawHtml();
 
                     // 4. Call Gemini modify function
                     try {
@@ -708,8 +725,29 @@ const app = {
         if (output) output.innerHTML = '';
     },
 
+    normalizeStoryboardHtml(html) {
+        if (!html || typeof html !== 'string') return '';
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // If the HTML already contains our rendered wrappers, unwrap back to raw.
+        const sceneContents = tempDiv.querySelectorAll('.scene-container .scene-content');
+        if (sceneContents && sceneContents.length > 0) {
+            return Array.from(sceneContents).map(el => el.innerHTML).join('\n');
+        }
+
+        return html;
+    },
+
+    getStoryboardRawHtml() {
+        const output = document.getElementById('storyboard-output');
+        if (!output) return '';
+        return this.normalizeStoryboardHtml(output.innerHTML);
+    },
+
     renderStoryboard(html) {
         const output = document.getElementById('storyboard-output');
+        html = this.normalizeStoryboardHtml(html);
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
 
@@ -835,8 +873,67 @@ const app = {
         document.getElementById('file-upload').click();
     },
 
+    // ───── Synopsis Modal ─────
+    openSynopsisModal() {
+        if (!this.state.user) {
+            alert("Please login (or continue as guest) to edit the synopsis.");
+            return;
+        }
+
+        const modal = document.getElementById('synopsis-modal');
+        if (!modal) return;
+
+        const textEl = document.getElementById('synopsis-text');
+        if (textEl) textEl.value = this.state.project.synopsis || '';
+
+        const noteEl = document.getElementById('synopsis-note');
+        if (noteEl) {
+            noteEl.textContent = this.state.isGuest
+                ? 'Guest mode: synopsis is stored only in this browser (local) and not saved to Firebase.'
+                : 'Signed in: synopsis is stored locally for faster workflow and used for AI context.';
+        }
+
+        modal.classList.remove('hidden');
+        setTimeout(() => textEl?.focus(), 10);
+    },
+
+    closeSynopsisModal() {
+        const modal = document.getElementById('synopsis-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+    },
+
+    triggerSynopsisFileUpload() {
+        const input = document.getElementById('synopsis-file');
+        if (!input) return;
+        input.value = '';
+        input.click();
+    },
+
+    async _handleSynopsisFileSelected(file) {
+        if (!file) return;
+        if (!file.name.endsWith('.txt')) {
+            alert('Only .txt files are supported.');
+            return;
+        }
+        const text = await file.text();
+        const textEl = document.getElementById('synopsis-text');
+        if (textEl) textEl.value = text;
+    },
+
+    saveSynopsisFromModal() {
+        const textEl = document.getElementById('synopsis-text');
+        const val = (textEl?.value || '').trim();
+        this.state.project.synopsis = val;
+        this.persistProjectState();
+        this.closeSynopsisModal();
+        this.addChatMessage('info', 'Synopsis saved and will be used for AI context.');
+    },
+
     diffAndRender(oldHtml, newHtml) {
         const outputElement = document.getElementById('storyboard-output');
+        oldHtml = this.normalizeStoryboardHtml(oldHtml);
+        newHtml = this.normalizeStoryboardHtml(newHtml);
 
         // Simple DOM-based block diffing
         const oldDiv = document.createElement('div');

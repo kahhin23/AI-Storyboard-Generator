@@ -12,7 +12,7 @@ const geminiAPI = {
 
 
     async generateStoryboard(projectData) {
-        const { name, description, type, duration, genre, language } = projectData;
+        const { name, description, synopsis, type, duration, genre, language } = projectData;
         const langInstruction = language ? `IMPORTANT: Write ALL content (scene titles, descriptions, dialogue, labels, and narrative text) entirely in ${language}. Do not use any other language.` : '';
 
         // Construct the prompt requesting a readable storyboard output in HTML format
@@ -24,7 +24,7 @@ Create a detailed, shot-by-shot draft storyboard for a new project based on the 
 - Type: ${type}
 - Duration (Estimated length of final content): ${duration}
 - Genre/Mood: ${genre}
-- Brief Description/Concept: ${description || "No specific concept provided, invent a creative storyline."}
+- Synopsis / Brief Description: ${(synopsis || description) || "No specific concept provided, invent a creative storyline."}
 - Output Language: ${language || 'English'}
 
 ${langInstruction}
@@ -109,6 +109,7 @@ Make it inspiring and ready for the user to edit directly in the browser. Do not
         const projectContext = projectData ? `
 PROJECT CONTEXT (User selections):
 - Project Name: ${projectData.name || "Not specified"}
+- Synopsis: ${projectData.synopsis || projectData.description || "Not specified"}
 - Type: ${projectData.type || "Not specified"}
 - Duration: ${projectData.duration || "Not specified"}
 - Genre/Mood: ${projectData.genre || "Not specified"}
@@ -232,6 +233,7 @@ Sure! I have updated the scene to include the magical sword in the forest. You w
         const projectContext = projectData ? `
 PROJECT CONTEXT (User selections):
 - Project Name: ${projectData.name || "Not specified"}
+- Synopsis: ${projectData.synopsis || projectData.description || "Not specified"}
 - Type: ${projectData.type || "Not specified"}
 - Duration: ${projectData.duration || "Not specified"}
 - Genre/Mood: ${projectData.genre || "Not specified"}

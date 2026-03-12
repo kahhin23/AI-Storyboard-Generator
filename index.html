@@ -218,7 +218,7 @@
             <!-- Top Nav / File Upload Buttons (Yellow) -->
             <div class="editor-top-nav">
                 <button class="btn nav-btn yellow" data-label="Synopsis"
-                    onclick="app.triggerFileUpload(this)">Synopsis</button>
+                    onclick="app.openSynopsisModal()">Synopsis</button>
                 <button class="btn nav-btn yellow" data-label="Characters"
                     onclick="app.openCharactersModal()">Characters</button>
                 <button class="btn nav-btn yellow" data-label="World Building"
@@ -367,6 +367,32 @@
                         <p class="auth-note" id="characters-mode-note" style="margin-top:0.75rem; text-align:left;"></p>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Synopsis Modal Popup -->
+    <div id="synopsis-modal" class="characters-modal-overlay hidden">
+        <div class="characters-modal-content synopsis-modal-content">
+            <div class="characters-modal-header">
+                <h3>Synopsis</h3>
+                <button class="btn-close-modal" onclick="app.closeSynopsisModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="synopsis-modal-body">
+                <div class="input-group" style="max-width:100%; margin-bottom:1rem;">
+                    <label for="synopsis-text">Synopsis Text</label>
+                    <textarea id="synopsis-text" rows="12" placeholder="Write or paste your synopsis here..."></textarea>
+                </div>
+                <input type="file" id="synopsis-file" accept=".txt" style="display:none;">
+                <div class="synopsis-actions">
+                    <button class="btn secondary" onclick="app.triggerSynopsisFileUpload()">
+                        <i class="fa-solid fa-upload"></i> Upload .txt
+                    </button>
+                    <button class="btn primary" onclick="app.saveSynopsisFromModal()">
+                        <i class="fa-solid fa-floppy-disk"></i> Save
+                    </button>
+                </div>
+                <p class="auth-note" id="synopsis-note" style="margin-top:0.75rem; text-align:left;"></p>
             </div>
         </div>
     </div>
