@@ -758,7 +758,7 @@ input[type="number"] {
     padding-top: 0;
     max-width: 1400px;
     height: 100vh;
-    padding-bottom: 2rem;
+    padding-bottom: 4rem;
     display: flex;
     flex-direction: column;
 }
@@ -786,32 +786,78 @@ input[type="number"] {
     box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
+.scene-settings-bar {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.5rem;
+    background: rgba(245, 158, 11, 0.05);
+    /* Subtle orange tint */
+}
+
+.settings-grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.settings-grid .field-item {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.settings-grid label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.settings-grid input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    color: white;
+    font-size: 0.9rem;
+    transition: var(--transition-fast);
+}
+
+.settings-grid input:focus {
+    outline: none;
+    border-color: var(--accent-secondary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
 .editor-main-layout {
     display: flex;
     gap: 1.5rem;
     flex: 1;
-    /* Take up remaining height */
     min-height: 0;
-    /* Important for scrollable inner areas */
 }
 
-.layout-col {
+.workspace-layout {
+    height: calc(100vh - 280px); /* Synchronized height for stability */
+    min-height: 600px;
+    margin-bottom: 2rem;
+}
+
+.workspace-layout .left-col,
+.workspace-layout .right-col {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
 }
 
-.left-col {
-    flex: 0 0 25%;
+.workspace-layout .left-col {
+    flex: 0 0 38%;
 }
 
-.middle-col {
-    flex: 0 0 20%;
-}
-
-.right-col {
+.workspace-layout .right-col {
     flex: 1;
-    /* Takes remaining space (~55%) */
 }
 
 .panel {
@@ -832,7 +878,8 @@ input[type="number"] {
 }
 
 .green-panel {
-    height: 100%;
+    flex: 1; /* Stretch to take available height */
+    min-height: 0;
     border: 1px solid var(--accent-primary);
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
 }
@@ -850,7 +897,7 @@ input[type="number"] {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    /* Crucial for scrolling to work in flex children */
+    margin-bottom: 1.5rem; /* Requested gap between chat and input */
 }
 
 .chat-room .panel-body {
@@ -1399,6 +1446,7 @@ input[type="number"] {
     border: 1px solid rgba(59, 130, 246, 0.2);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
+
 /* ───── History Sidebar ───── */
 .history-sidebar {
     position: fixed;
@@ -1512,13 +1560,16 @@ input[type="number"] {
 .history-list::-webkit-scrollbar {
     width: 6px;
 }
+
 .history-list::-webkit-scrollbar-track {
     background: transparent;
 }
+
 .history-list::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
 }
+
 .history-list::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
@@ -1596,8 +1647,15 @@ input[type="number"] {
 }
 
 @keyframes modalPop {
-    from { transform: scale(0.95) translateY(20px); opacity: 0; }
-    to { transform: scale(1) translateY(0); opacity: 1; }
+    from {
+        transform: scale(0.95) translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
 }
 
 .history-modal-header {
@@ -1909,6 +1967,7 @@ input[type="number"] {
     .characters-modal-body {
         grid-template-columns: 1fr;
     }
+
     .characters-pane--left {
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -1920,10 +1979,10 @@ input[type="number"] {
 #storyboard-output,
 #storyboard-output * {
     font-family: "Microsoft YaHei", "SimSun", "Noto Sans SC", sans-serif;
-    word-break: keep-all;           
-    overflow-wrap: normal;        
-    hyphens: none;                
-    line-break: strict;           
+    word-break: keep-all;
+    overflow-wrap: normal;
+    hyphens: none;
+    line-break: strict;
 }
 
 #storyboard-output p,
@@ -1932,6 +1991,7 @@ input[type="number"] {
 #storyboard-output span {
     word-break: keep-all !important;
 }
+
 /* ───── Chat Actions Buttons ───── */
 .chat-actions {
     display: flex;
@@ -2003,7 +2063,8 @@ input[type="number"] {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Allow shrinking */
+    min-height: 0;
+    /* Allow shrinking */
     background: rgba(15, 23, 42, 0.4);
     border-radius: 12px;
     border: 1px solid var(--glass-border);

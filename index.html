@@ -40,10 +40,12 @@
         </button>
         <div class="history-content">
             <h3 class="history-title">History</h3>
-            
+
             <div class="history-toggle">
-                <button id="toggle-history-scene" class="btn-toggle active" onclick="app.setHistoryFilter('scene')">Scenes</button>
-                <button id="toggle-history-script" class="btn-toggle" onclick="app.setHistoryFilter('script')">Scripts</button>
+                <button id="toggle-history-scene" class="btn-toggle active"
+                    onclick="app.setHistoryFilter('scene')">Scenes</button>
+                <button id="toggle-history-script" class="btn-toggle"
+                    onclick="app.setHistoryFilter('script')">Scripts</button>
             </div>
 
             <div id="history-list" class="history-list">
@@ -233,8 +235,34 @@
                     onclick="app.triggerFileUpload(this)">Timeline</button>
             </div>
 
-            <!-- Main Tri-Column Layout -->
-            <div class="editor-main-layout">
+            <!-- Horizontal Scene Settings Bar -->
+            <div class="scene-settings-bar orange-panel">
+                <div class="settings-grid">
+                    <div class="field-item">
+                        <label>Timing(时段)</label>
+                        <input type="text" id="editor-time" placeholder="Enter time...">
+                    </div>
+                    <div class="field-item">
+                        <label>Location(地点)</label>
+                        <input type="text" id="editor-location" placeholder="Enter location...">
+                    </div>
+                    <div class="field-item">
+                        <label>Character(人物)</label>
+                        <input type="text" id="editor-character" placeholder="Enter characters...">
+                    </div>
+                    <div class="field-item">
+                        <label>Duration(时长)</label>
+                        <input type="text" id="editor-length" placeholder="Enter duration...">
+                    </div>
+                    <div class="field-item">
+                        <label>Vibe(气氛)</label>
+                        <input type="text" id="editor-vibe" placeholder="Enter vibe...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main 2-Column Layout -->
+            <div class="editor-main-layout workspace-layout">
 
                 <!-- Left Column: Chat & Input (Orange) -->
                 <div class="layout-col left-col">
@@ -245,39 +273,17 @@
                         </div>
                     </div>
                     <div class="panel user-input orange-panel">
-                        <textarea placeholder="User Input..." id="chat-input"></textarea>
+                        <textarea placeholder="Ask AI to help you create..." id="chat-input"></textarea>
                         <div class="chat-actions">
-                            <button id="btn-update-scene" class="btn chat-action-btn scene-btn" title="Send to Scene Container">
+                            <button id="btn-update-scene" class="btn chat-action-btn scene-btn"
+                                title="Send to Scene Container">
                                 <i class="fa-solid fa-clapperboard"></i> Update Scene
                             </button>
-                            <button id="btn-update-script" class="btn chat-action-btn script-btn" title="Send to Script Container">
+                            <button id="btn-update-script" class="btn chat-action-btn script-btn"
+                                title="Send to Script Container">
                                 <i class="fa-solid fa-file-lines"></i> Update Script
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Middle Column: Fields (Orange) -->
-                <div class="layout-col middle-col">
-                    <div class="field-group orange-panel">
-                        <label>Timing(时段)</label>
-                        <input type="text" id="editor-time" placeholder="Enter time...">
-                    </div>
-                    <div class="field-group orange-panel">
-                        <label>Location(地点)</label>
-                        <input type="text" id="editor-location" placeholder="Enter location...">
-                    </div>
-                    <div class="field-group orange-panel">
-                        <label>Character(人物)</label>
-                        <input type="text" id="editor-character" placeholder="Enter characters...">
-                    </div>
-                    <div class="field-group orange-panel">
-                        <label>Duration(时长)</label>
-                        <input type="text" id="editor-length" placeholder="Enter duration...">
-                    </div>
-                    <div class="field-group orange-panel">
-                        <label>Vibe(气氛)</label>
-                        <input type="text" id="editor-vibe" placeholder="Enter vibe...">
                     </div>
                 </div>
 
