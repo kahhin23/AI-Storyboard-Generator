@@ -30,7 +30,6 @@ const app = {
         selectedCharacterId: null,
         project: {
             name: '',
-            description: '',
             synopsis: '',
             type: '',
             duration: '',
@@ -103,7 +102,6 @@ const app = {
         try {
             const payload = {
                 name: this.state.project.name || '',
-                description: this.state.project.description || '',
                 synopsis: this.state.project.synopsis || '',
                 type: this.state.project.type || '',
                 duration: this.state.project.duration || '',
@@ -126,7 +124,6 @@ const app = {
             this.state.project = {
                 ...this.state.project,
                 name: data.name || this.state.project.name,
-                description: data.description || this.state.project.description,
                 synopsis: data.synopsis || this.state.project.synopsis,
                 type: data.type || this.state.project.type,
                 duration: data.duration || this.state.project.duration,
@@ -136,11 +133,23 @@ const app = {
 
             const nameEl = document.getElementById('project-name');
             if (nameEl && this.state.project.name) nameEl.value = this.state.project.name;
-            const descEl = document.getElementById('project-description');
-            if (descEl && this.state.project.description) descEl.value = this.state.project.description;
         } catch (e) {
             // ignore
         }
+    },
+
+    switchOutputTab(tabType) {
+        // Remove active class from buttons
+        document.getElementById('tab-scene').classList.remove('active');
+        document.getElementById('tab-script').classList.remove('active');
+        
+        // Hide all sections
+        document.getElementById('section-scene').classList.add('hidden-section');
+        document.getElementById('section-script').classList.add('hidden-section');
+        
+        // Activate target
+        document.getElementById(`tab-${tabType}`).classList.add('active');
+        document.getElementById(`section-${tabType}`).classList.remove('hidden-section');
     },
 
     setupAuthentication() {
@@ -339,7 +348,6 @@ const app = {
         // Home Screen
         document.getElementById('btn-create-project').addEventListener('click', () => {
             const name = document.getElementById('project-name').value.trim();
-            const desc = document.getElementById('project-description').value.trim();
             const apiKey = document.getElementById('api-key-input').value.trim();
 
             if (!apiKey) {
@@ -353,7 +361,6 @@ const app = {
             }
 
             this.state.project.name = name;
-            this.state.project.description = desc;
             this.persistProjectState();
             this.navigateTo('type');
         });
@@ -428,9 +435,7 @@ const app = {
             const middleData = {
                 time: document.getElementById('editor-time').value.trim(),
                 location: document.getElementById('editor-location').value.trim(),
-                character: document.getElementById('editor-character').value.trim(),
-                duration: document.getElementById('editor-length').value.trim(),
-                vibe: document.getElementById('editor-vibe').value.trim()
+                character: document.getElementById('editor-character').value.trim()
             };
             const sceneHtml = document.getElementById('scene-output').innerHTML;
             const scriptHtml = document.getElementById('script-output').innerHTML;
@@ -491,9 +496,7 @@ const app = {
         const middleData = {
             time: document.getElementById('editor-time').value.trim(),
             location: document.getElementById('editor-location').value.trim(),
-            character: document.getElementById('editor-character').value.trim(),
-            duration: document.getElementById('editor-length').value.trim(),
-            vibe: document.getElementById('editor-vibe').value.trim()
+            character: document.getElementById('editor-character').value.trim()
         };
 
         const sceneHtml = document.getElementById('scene-output').innerHTML;
@@ -515,11 +518,13 @@ const app = {
                     const combinedSceneHtml = sceneHtml + "\n" + response.newSceneHtml;
                     this.diffAndRender('scene-output', sceneHtml, combinedSceneHtml);
                 }
+                if (target === 'scene') this.switchOutputTab('scene');
             }
             if (target === 'script' || target === 'chat') {
                 if (response.newScriptHtml && response.newScriptHtml !== scriptHtml) {
                     this.diffAndRender('script-output', scriptHtml, response.newScriptHtml);
                 }
+                if (target === 'script') this.switchOutputTab('script');
             }
 
         } catch (error) {
@@ -703,7 +708,11 @@ const app = {
 
             // Success
             this.populateEditor(storyboardData);
-            setTimeout(() => this.navigateTo('editor'), 1000);
+            // Hide Loading & Show Editor
+            this.navigateTo('editor');
+            
+            // Default to Scene tab
+            this.switchOutputTab('scene');
 
         } catch (error) {
             console.error('Generation Error:', error);
@@ -745,8 +754,6 @@ const app = {
     populateEditor(storyboardData) {
 
         // Populate Middle Column Fields — start blank
-        document.getElementById('editor-length').value = '';
-        document.getElementById('editor-vibe').value = '';
         document.getElementById('editor-time').value = '';
         document.getElementById('editor-location').value = '';
         document.getElementById('editor-character').value = '';
@@ -850,22 +857,19 @@ const app = {
     _resetFormState() {
         this.state.project = {
             name: '',
-            description: '',
+            synopsis: '',
             type: '',
             duration: '',
             genre: '',
             language: ''
         };
         document.getElementById('project-name').value = '';
-        document.getElementById('project-description').value = '';
         document.getElementById('project-duration').value = '';
         document.getElementById('drama-episodes').value = '';
         document.getElementById('drama-minutes').value = '';
         document.getElementById('editor-time').value = '';
         document.getElementById('editor-location').value = '';
         document.getElementById('editor-character').value = '';
-        document.getElementById('editor-length').value = '';
-        document.getElementById('editor-vibe').value = '';
         document.querySelector('.generating-container').innerHTML = `
             <div class="ai-orb"></div>
             <h2 class="gradient-text pulse-text">Generating your storyboard...</h2>
@@ -1105,6 +1109,10 @@ const app = {
             this.state.guestHistory.unshift(item);
             await this.loadHistory();
             this.addChatMessage('info', `Saved ${type} to session History.`);
+            
+            // Clear the content after text is saved
+            document.getElementById(`${type}-output`).innerHTML = '';
+            
             return;
         }
 
@@ -1125,6 +1133,9 @@ const app = {
 
             btnSave.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
             this.addChatMessage('info', `✅ ${type.charAt(0).toUpperCase() + type.slice(1)} successfully saved.`);
+
+            // Clear the content after text is saved
+            document.getElementById(`${type}-output`).innerHTML = '';
 
             setTimeout(() => {
                 btnSave.innerHTML = originalText;
@@ -1290,9 +1301,52 @@ const app = {
     closeHistoryModal() {
         document.getElementById('history-modal').classList.add('hidden');
         document.getElementById('history-modal-body').innerHTML = '';
-    }
+    },
 
-    ,
+    // ───── Expand Modal ─────
+    openExpandModal(type) {
+        const modal = document.getElementById('expand-modal');
+        const titleEl = document.getElementById('expand-modal-title');
+        const bodyEl = document.getElementById('expand-modal-body');
+        
+        if (!modal || !titleEl || !bodyEl) return;
+
+        this.state.expandModalType = type; // Keep track of what we are expanding
+        
+        if (type === 'scene') {
+            titleEl.textContent = 'Expanded View - Scene';
+            bodyEl.innerHTML = document.getElementById('scene-output').innerHTML;
+        } else if (type === 'script') {
+            titleEl.textContent = 'Expanded View - Script';
+            bodyEl.innerHTML = document.getElementById('script-output').innerHTML;
+        }
+
+        modal.classList.remove('hidden');
+    },
+
+    closeExpandModal() {
+        const modal = document.getElementById('expand-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.getElementById('expand-modal-body').innerHTML = '';
+            this.state.expandModalType = null;
+        }
+    },
+
+    saveExpandModal() {
+        const bodyEl = document.getElementById('expand-modal-body');
+        const type = this.state.expandModalType;
+        
+        if (!bodyEl || !type) return;
+
+        if (type === 'scene') {
+            document.getElementById('scene-output').innerHTML = bodyEl.innerHTML;
+        } else if (type === 'script') {
+            document.getElementById('script-output').innerHTML = bodyEl.innerHTML;
+        }
+
+        this.closeExpandModal();
+    },
 
     // ───── Characters Modal ─────
     openCharactersModal() {

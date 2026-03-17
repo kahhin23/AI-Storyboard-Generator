@@ -11,7 +11,7 @@ const geminiAPI = {
     },
 
     async generateStoryboard(projectData, characters = []) {
-        const { name, description, synopsis, type, duration, genre, language } = projectData;
+        const { name, synopsis, type, duration, genre, language } = projectData;
         const langInstruction = language ? `IMPORTANT: Write ALL content (scene titles, descriptions, dialogue, labels, and narrative text) entirely in ${language}. Do not use any other language.` : '';
 
         const masterListContext = `CHARACTER PROFILES (Master List):
@@ -25,7 +25,7 @@ Create a detailed, shot-by-shot draft storyboard for a new project based on the 
 - Type: ${type}
 - Duration (Estimated length of final content): ${duration}
 - Genre/Mood: ${genre}
-- Synopsis / Brief Description: ${(synopsis || description) || "No specific concept provided, invent a creative storyline."}
+- Synopsis: ${synopsis || "No specific concept provided, invent a creative storyline."}
 - Output Language: ${language || 'English'}
 
 ${masterListContext}
@@ -103,7 +103,7 @@ Make it inspiring and ready for the user to edit directly in the browser. Do not
         const projectContext = projectData ? `
 PROJECT CONTEXT (User selections):
 - Project Name: ${projectData.name || "Not specified"}
-- Synopsis: ${projectData.synopsis || projectData.description || "Not specified"}
+- Synopsis: ${projectData.synopsis || "Not specified"}
 - Type: ${projectData.type || "Not specified"}
 - Duration: ${projectData.duration || "Not specified"}
 - Genre/Mood: ${projectData.genre || "Not specified"}
@@ -116,9 +116,7 @@ ${characters && characters.length > 0 ? characters.map(c => `- ${c.name}: [Gende
         const sceneParamsContext = `SCENE-SPECIFIC PARAMETERS:
 - Timing: ${middleData.time || "Not specified"}
 - Location: ${middleData.location || "Not specified"}
-- Scene Character(s): ${middleData.character || "Not specified"}
-- Duration: ${middleData.duration || "Not specified"}
-- Vibe / Atmosphere: ${middleData.vibe || "Not specified"}`;
+- Scene Character(s): ${middleData.character || "Not specified"}`;
 
         let targetInstruction = "";
         if (target === 'scene') {
@@ -236,7 +234,7 @@ Do not use markdown code block wrappers for the HTML parts.
         const projectContext = projectData ? `
 PROJECT CONTEXT (User selections):
 - Project Name: ${projectData.name || "Not specified"}
-- Synopsis: ${projectData.synopsis || projectData.description || "Not specified"}
+- Synopsis: ${projectData.synopsis || "Not specified"}
 - Type: ${projectData.type || "Not specified"}
 - Duration: ${projectData.duration || "Not specified"}
 - Genre/Mood: ${projectData.genre || "Not specified"}
@@ -249,9 +247,7 @@ ${characters && characters.length > 0 ? characters.map(c => `- ${c.name}: [Gende
         const sceneParamsContext = `SCENE-SPECIFIC PARAMETERS:
 - Timing: ${middleData.time || "Not specified"}
 - Location: ${middleData.location || "Not specified"}
-- Scene Character(s): ${middleData.character || "Not specified"}
-- Duration: ${middleData.duration || "Not specified"}
-- Vibe / Atmosphere: ${middleData.vibe || "Not specified"}`;
+- Scene Character(s): ${middleData.character || "Not specified"}`;
 
         const prompt = `
 You are a professional storyboard artist and film director.
